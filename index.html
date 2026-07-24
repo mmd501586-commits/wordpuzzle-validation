@@ -619,6 +619,7 @@ function renderBoard(grid,S){
         inp.onclick=e=>handleCellClick(e,r,c,d);
         inp.onfocus=()=>updateDirection(r,c,d);
         inp.onkeydown=e=>handleKey(e,r,c);
+        inp.oninput=e=>handleInput(e,r,c);
         div.appendChild(inp);
       }else{
         div.style.width=cellSize+'px';div.style.height=cellSize+'px';
@@ -679,6 +680,9 @@ function handleKey(e,r,c){
   if(e.key==='Tab')return;
   if(e.key.match(/^[a-zA-Z]$/)){e.preventDefault();e.target.value=e.key;recordTap();moveFocus(r,c,1);return;}
   if(e.key==='Backspace'){e.preventDefault();if(e.target.value)e.target.value='';else moveFocus(r,c,-1);}
+}
+function handleInput(e,r,c){
+  if(/^[a-zA-Z]$/.test(e.target.value)){recordTap();moveFocus(r,c,1);}
 }
 function moveFocus(r,c,step){
   let dr=inputDirection==='down'?1:0,dc=inputDirection==='across'?1:0;

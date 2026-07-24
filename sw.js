@@ -1,6 +1,6 @@
 // WordPuzzle Service Worker — 离线缓存 app shell
 // 升级 app 时改这个版本号即可让所有设备拉取新版（不动用户数据，数据在 localStorage）
-const CACHE = 'wordpuzzle-v6';
+const CACHE = 'wordpuzzle-v7';
 const ASSETS = [
   './',
   './index.html',
