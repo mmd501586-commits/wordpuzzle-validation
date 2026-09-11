@@ -1,0 +1,748 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no,viewport-fit=cover">
+<title>WordPuzzle V7.4.1 · 错词读音与拼读辅助</title>
+<!-- PWA -->
+<link rel="manifest" href="./manifest.webmanifest">
+<meta name="theme-color" content="#1a4a3a">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="WordPuzzle">
+<link rel="apple-touch-icon" href="./apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png">
+<style>
+:root{
+  --bg:#f0f5ec;--surface:#fff;--surface-dim:#e8efe2;
+  --primary:#1a4a3a;--primary-mid:#2d6a56;--primary-light:#3d8a6e;
+  --accent:#e67e22;--accent-glow:rgba(230,126,34,.12);--accent-shadow:rgba(230,126,34,.3);
+  --correct:#27ae60;--correct-light:#d4edda;
+  --wrong:#e74c3c;--wrong-light:#fde2df;
+  --amber:#f39c12;
+  --text:#1a4a3a;--muted:#6b8f7a;--light:#a3c4b0;
+  --border:#c8dcc0;
+  --cell:36px;--radius:14px;--radius-sm:8px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans SC",sans-serif;
+  background:var(--bg);color:var(--text);min-height:100vh;
+  display:flex;flex-direction:column;align-items:center;
+  padding:0 0 80px 0;touch-action:manipulation;
+  -webkit-tap-highlight-color:transparent;
+}
+
+/* ---- Header ---- */
+.header{
+  width:100%;background:var(--primary);color:#fff;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:14px 20px;position:sticky;top:0;z-index:50;
+}
+.header-title{font-size:1.1rem;font-weight:800;letter-spacing:.08em}
+.header-title span{color:var(--accent);font-weight:400}
+.header-right{display:flex;align-items:center;gap:12px}
+.progress-pill{
+  font-size:.75rem;background:rgba(255,255,255,.15);
+  padding:4px 10px;border-radius:20px;font-weight:600;
+}
+.btn-icon{
+  background:none;border:none;color:#fff;font-size:1.3rem;
+  cursor:pointer;padding:4px;opacity:.85;transition:opacity .2s;
+}
+.btn-icon:hover{opacity:1}
+
+/* ---- Settings ---- */
+.settings-panel{
+  width:100%;max-width:520px;background:var(--surface);
+  border-bottom:2px solid var(--border);
+  padding:0;max-height:0;overflow:hidden;transition:all .3s ease;
+}
+.settings-panel.open{max-height:200px;padding:16px 20px}
+.settings-row{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:8px 0;border-bottom:1px solid var(--border);
+}
+.settings-row:last-child{border:none}
+.settings-label{font-size:.88rem;color:var(--muted)}
+.btn-sm{
+  font-size:.8rem;padding:6px 14px;border-radius:20px;
+  border:1.5px solid var(--border);background:var(--surface);
+  color:var(--text);cursor:pointer;font-weight:600;transition:all .2s;
+}
+.btn-sm:hover{border-color:var(--accent);color:var(--accent)}
+.btn-sm.danger{color:var(--wrong);border-color:var(--wrong)}
+
+/* ---- Dashboard ---- */
+.dashboard{
+  display:grid;grid-template-columns:1fr 1fr 1fr auto;
+  gap:6px;width:100%;max-width:520px;
+  padding:14px 16px;background:var(--surface);
+  margin:12px 16px 0;border-radius:var(--radius);
+  box-shadow:0 2px 12px rgba(26,74,58,.06);
+}
+.stat{display:flex;flex-direction:column;align-items:flex-start}
+.stat-label{font-size:.7rem;color:var(--muted);font-weight:700;letter-spacing:.04em}
+.stat-val{font-size:1.2rem;font-weight:800;margin-top:2px}
+.stat-val.new{color:var(--amber)}
+.stat-val.hard{color:var(--wrong)}
+.stat-val.mastered{color:var(--correct)}
+.timer{
+  font-size:1.3rem;font-weight:800;color:var(--primary);
+  justify-self:end;align-self:center;min-width:52px;text-align:right;
+  font-variant-numeric:tabular-nums;
+}
+.timer.warn{color:var(--wrong);animation:pulse-warn 1s infinite}
+
+/* ---- Progress bar ---- */
+.progress-bar-wrap{width:100%;max-width:520px;padding:0 16px;margin-top:10px}
+.progress-bar{height:5px;background:var(--border);border-radius:3px;overflow:hidden}
+.progress-bar-fill{
+  height:100%;background:linear-gradient(90deg,var(--correct),var(--primary-light));
+  border-radius:3px;transition:width .5s ease;
+}
+.progress-text{font-size:.65rem;color:var(--light);margin-top:3px;text-align:right}
+
+/* ---- Game ---- */
+.game-wrap{
+  width:100%;max-width:520px;padding:0 16px;margin-top:14px;
+  display:flex;flex-direction:column;align-items:center;
+}
+.page-nav{
+  width:100%;display:flex;align-items:center;justify-content:center;
+  gap:8px;margin-bottom:10px;
+}
+.page-dot{
+  width:8px;height:8px;border-radius:50%;
+  background:var(--border);transition:all .2s;
+}
+.page-dot.done{background:var(--correct)}
+.page-dot.active{background:var(--accent);width:20px;border-radius:4px}
+.page-dot.wrong{background:var(--wrong)}
+.grid-box{
+  display:inline-grid;gap:2px;background:var(--primary);
+  padding:5px;border-radius:var(--radius-sm);
+  box-shadow:0 6px 24px rgba(26,74,58,.12);
+  user-select:none;
+}
+.cell{
+  position:relative;
+  display:flex;align-items:center;justify-content:center;
+  background:var(--surface);border-radius:2px;
+}
+.cell.black{background:var(--primary)}
+.cell.hl{background:#fef3e2!important}
+.cell-num{
+  position:absolute;top:1px;left:2px;
+  color:var(--accent);font-weight:800;
+  pointer-events:none;line-height:1;z-index:5;
+}
+.cell input{
+  width:100%;height:100%;border:none;text-align:center;
+  background:transparent;font-family:inherit;
+  font-weight:700;color:var(--primary);
+  outline:none;caret-color:transparent;cursor:pointer;padding:0;border-radius:0;
+}
+.cell input:focus{background:transparent}
+.cell input:disabled{opacity:.6;cursor:default}
+.cell.correct-flash input{color:var(--correct)}
+.cell.wrong-flash input{color:var(--wrong)}
+
+/* Clues - single column for paginated layout */
+.clues{
+  width:100%;background:var(--surface);margin-top:12px;
+  padding:12px 16px;border-radius:var(--radius-sm);
+  border:1px solid var(--border);
+}
+.clue{
+  display:flex;align-items:center;gap:8px;
+  margin-bottom:6px;font-size:.92rem;line-height:1.4;
+  cursor:pointer;padding:4px 6px;
+  border-radius:4px;transition:background .15s;
+}
+.clue:last-child{margin-bottom:0}
+.clue:hover{background:var(--accent-glow)}
+.clue-n{
+  background:var(--primary);color:#fff;min-width:22px;height:22px;
+  text-align:center;line-height:22px;border-radius:6px;
+  font-size:.75rem;font-weight:700;flex-shrink:0;
+}
+.clue-dir{font-size:.65rem;color:var(--muted);margin-left:-4px}
+.clue-cn{color:var(--text)}
+
+/* Submit */
+.btn-submit{
+  width:100%;max-width:300px;padding:16px;margin-top:14px;
+  background:var(--accent);color:#fff;border:none;
+  font-size:1.05rem;font-weight:800;border-radius:50px;
+  cursor:pointer;letter-spacing:.04em;
+  box-shadow:0 4px 16px var(--accent-shadow);transition:all .15s;
+}
+.btn-submit:active{transform:scale(.96)}
+.btn-skip{
+  background:none;border:none;color:var(--muted);
+  font-size:.82rem;font-weight:600;cursor:pointer;
+  margin-top:6px;padding:6px 12px;text-decoration:underline;
+}
+
+/* ---- Result overlay ---- */
+.result-overlay{
+  display:none;position:fixed;top:0;left:0;width:100%;height:100%;
+  background:rgba(240,245,236,.96);z-index:200;
+  flex-direction:column;align-items:center;justify-content:center;
+  padding:20px;animation:fade-in .25s;
+}
+.result-card{
+  background:var(--surface);padding:32px 24px;border-radius:20px;
+  text-align:center;max-width:380px;width:100%;
+  box-shadow:0 12px 40px rgba(26,74,58,.1);animation:slide-up .3s ease;
+}
+.result-icon{font-size:3rem;margin-bottom:8px}
+.result-title{font-size:1.4rem;font-weight:800;margin-bottom:12px}
+.result-stats{display:flex;justify-content:center;gap:24px;margin-bottom:16px}
+.result-stat{text-align:center}
+.result-stat-val{font-size:1.5rem;font-weight:800}
+.result-stat-label{font-size:.7rem;color:var(--muted);margin-top:2px}
+.result-wrong-list{
+  text-align:left;background:var(--wrong-light);border-radius:var(--radius-sm);
+  padding:12px 14px;margin:12px 0;font-size:.85rem;line-height:1.6;
+}
+.result-wrong-list span{color:var(--wrong);font-weight:700}
+
+/* ---- Review modal ---- */
+.review-overlay{
+  display:none;position:fixed;top:0;left:0;width:100%;height:100%;
+  background:var(--bg);z-index:300;
+  flex-direction:column;align-items:center;justify-content:center;padding:20px;
+}
+.review-card{
+  background:var(--surface);padding:32px 24px;border-radius:20px;
+  text-align:center;max-width:380px;width:100%;
+  box-shadow:0 12px 40px rgba(26,74,58,.1);border:1px solid var(--border);
+}
+.review-round{font-size:.75rem;color:var(--muted);font-weight:700;letter-spacing:.06em;margin-bottom:4px}
+.review-badge{
+  display:inline-block;background:var(--accent-glow);color:var(--accent);
+  font-size:.75rem;padding:3px 10px;border-radius:20px;
+  font-weight:700;margin-bottom:16px;
+}
+.review-cn{font-size:2rem;font-weight:800;color:var(--primary);margin-bottom:20px}
+.review-input{
+  width:100%;padding:14px;font-size:1.4rem;font-weight:700;
+  border:2.5px solid var(--border);border-radius:var(--radius);
+  text-align:center;color:var(--primary);background:var(--surface);
+  outline:none;transition:border-color .2s;
+}
+.review-input:focus{border-color:var(--accent)}
+.review-fb{min-height:28px;margin:12px 0;font-size:1rem;font-weight:700}
+.btn-confirm{
+  width:100%;padding:16px;background:var(--primary);color:#fff;
+  border:none;font-size:1rem;font-weight:700;border-radius:50px;
+  cursor:pointer;transition:all .15s;
+}
+.btn-confirm:active{transform:scale(.96)}
+
+/* ---- Feedback FAB ---- */
+.fab-feedback{
+  position:fixed;bottom:20px;right:20px;z-index:100;
+  background:var(--surface);color:var(--muted);
+  border:1.5px solid var(--border);padding:8px 14px;
+  border-radius:20px;font-size:.75rem;font-weight:600;
+  cursor:pointer;text-decoration:none;
+  box-shadow:0 2px 8px rgba(0,0,0,.06);transition:all .2s;
+}
+.fab-feedback:hover{color:var(--accent);border-color:var(--accent)}
+
+/* ---- Animations ---- */
+@keyframes fade-in{from{opacity:0}to{opacity:1}}
+@keyframes slide-up{from{transform:translateY(30px);opacity:0}to{transform:translateY(0);opacity:1}}
+@keyframes pulse-warn{0%,100%{opacity:1}50%{opacity:.5}}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+.shake{animation:shake .3s}
+
+/* ---- Responsive ---- */
+@media(max-width:380px){.clue{font-size:.82rem}}
+@media(min-width:520px){}
+</style>
+<link rel="stylesheet" href="./iteration.css">
+</head>
+<body>
+
+<div class="header">
+  <div><div class="header-title">Word<span>Puzzle</span></div><button class="version-link" onclick="document.getElementById('version-history').showModal()">V7.4.1 · 2026-09-11 · 版本记录</button></div>
+  <div class="header-right">
+    <span class="progress-pill" id="progress-pill">0%</span>
+    <button class="btn-icon" onclick="toggleSettings()" title="设置">&#9881;</button>
+  </div>
+</div>
+
+<div class="settings-panel" id="settings">
+  <div class="settings-row" id="install-row" style="display:none"><span class="settings-label">安装到主屏</span><button class="btn-sm" onclick="installApp()">立即安装</button></div>
+  <div class="settings-row"><span class="settings-label">导出学习记录</span><button class="btn-sm" onclick="exportData()">下载 JSON</button></div>
+  <div class="settings-row"><span class="settings-label">关于</span><a href="https://github.com/mmd501586-commits/wordpuzzle-validation" target="_blank" rel="noopener">项目页面 ↗</a></div>
+  <div class="settings-row"><span class="settings-label">重置所有数据</span><button class="btn-sm danger" onclick="resetData()">清空重置</button></div>
+</div>
+
+<div class="round-status"><strong id="round-progress"></strong><span id="phase-label"></span><small id="save-status" role="status">自动保存已开启</small></div>
+<div class="dashboard">
+  <div class="stat"><span class="stat-label">新词</span><span class="stat-val new" id="s-new">0</span></div>
+  <div class="stat"><span class="stat-label">待攻克</span><span class="stat-val hard" id="s-hard">0</span></div>
+  <div class="stat"><span class="stat-label">已掌握</span><span class="stat-val mastered" id="s-master">0</span></div>
+  <div class="timer" id="timer">00:00</div>
+</div>
+
+<div class="progress-bar-wrap">
+  <div class="progress-bar"><div class="progress-bar-fill" id="prog-fill" style="width:0%"></div></div>
+  <div class="progress-text" id="prog-text">掌握进度</div>
+</div>
+
+<div class="game-wrap" id="game">
+  <div class="page-nav" id="page-nav"></div>
+  <div class="grid-box" id="grid"></div>
+  <div class="clues" id="clues"></div>
+  <button class="btn-submit" id="btn-submit">提交</button>
+  <button class="btn-skip" id="btn-skip">跳过本页</button>
+</div>
+
+<div class="result-overlay" id="result">
+  <div class="result-card">
+    <div class="result-icon" id="r-icon"></div>
+    <div class="result-title" id="r-title"></div>
+    <div class="result-stats">
+      <div class="result-stat"><div class="result-stat-val" style="color:var(--correct)" id="r-correct">0</div><div class="result-stat-label">正确</div></div>
+      <div class="result-stat"><div class="result-stat-val" style="color:var(--wrong)" id="r-wrong">0</div><div class="result-stat-label">错误</div></div>
+      <div class="result-stat"><div class="result-stat-val" id="r-time">0s</div><div class="result-stat-label">用时</div></div>
+    </div>
+    <div class="result-wrong-list" id="r-list" style="display:none"></div>
+    <button class="btn-confirm" id="r-btn" onclick="onResultNext()">继续</button>
+    <button class="btn-sm end-choice" id="end-btn" onclick="endRound()" style="display:none">今天到这里</button>
+  </div>
+</div>
+
+<div class="review-overlay" id="review">
+  <div class="review-card">
+    <div class="review-round">即刻复习 · 第 <span id="rv-round">1</span>/3 轮</div>
+    <div class="review-badge" id="rv-badge">权重: 0</div>
+    <div class="review-cn" id="rv-cn">—</div>
+    <input type="text" class="review-input" id="rv-input" placeholder="输入英文拼写" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
+    <div class="review-fb" id="rv-fb"></div>
+    <button class="btn-confirm" id="review-confirm" onclick="checkReview()">确认</button>
+  </div>
+</div>
+
+<button class="pause-control" id="pause-btn" onclick="pauseRound()">暂停并保存</button>
+<div class="result-overlay" id="paused" role="dialog" aria-modal="true" aria-label="已暂停">
+ <div class="result-card"><div class="result-icon">🌙</div><h2>先休息一下</h2><p id="pause-summary"></p><p>下次回来，继续这一轮。</p><button class="btn-confirm" id="resume-btn" onclick="resumeRound()">继续上次练习</button><button class="btn-sm end-choice" id="pause-end-btn" onclick="endRound()">结束本轮</button></div>
+</div>
+<div class="result-overlay" id="ended"><div class="result-card"><div class="result-icon">🌿</div><h2>这一轮收好了</h2><p id="end-summary"></p><button class="btn-confirm" id="start-next" onclick="startNewGame()">开始新一轮</button></div></div>
+<dialog id="version-history"><h2>版本足迹</h2><p>当前 V7.4.1 · 2026-09-11 · 本地候选版</p><p>第 20 个版本登记条目（含 19 个历史标识）。登记数不等于完整发布次数。</p><ol id="version-items"></ol><form method="dialog"><button class="btn-confirm">关闭</button></form></dialog>
+
+<script>
+// ======================== FULL DB (V4.8 词库完整保留) ========================
+const FULL_DB=[
+{w:"backpack",c:"背包"},{w:"bracelet",c:"手镯"},{w:"button",c:"纽扣"},{w:"chain",c:"链条"},{w:"cotton",c:"棉花"},{w:"earring",c:"耳环"},{w:"fashionable",c:"时尚的"},{w:"handbag",c:"手提包"},{w:"handkerchief",c:"手绢"},{w:"jewellery",c:"珠宝"},{w:"jumper",c:"套头毛衣"},{w:"label",c:"标签"},{w:"laundry",c:"待洗衣服"},{w:"woolen",c:"羊毛的"},{w:"old-fashioned",c:"过时的"},{w:"stylish",c:"时髦的"},{w:"stripe",c:"条纹"},{w:"tights",c:"紧身裤袜"},{w:"trainers",c:"运动鞋"},{w:"sandals",c:"凉鞋"},{w:"swimsuit",c:"泳衣"},{w:"uniform",c:"制服"},{w:"wool",c:"羊毛"},{w:"plastic",c:"塑料"},{w:"pocket",c:"口袋"},{w:"silver",c:"银色的"},{w:"golden",c:"金色的"},{w:"dark",c:"深色的"},{w:"light",c:"浅色的"},{w:"perfume",c:"香水"},{w:"comfortable",c:"舒服的"},{w:"tight",c:"紧的"},
+{w:"access",c:"接近/进入"},{w:"address",c:"地址"},{w:"blogger",c:"博主"},{w:"calculator",c:"计算器"},{w:"cellphone",c:"手机(cell phone)"},{w:"connect",c:"连接"},{w:"digital",c:"数字的"},{w:"download",c:"下载"},{w:"electronic",c:"电子的"},{w:"mobilephone",c:"手机(mobile phone)"},{w:"online",c:"线上"},{w:"password",c:"密码"},{w:"photograph",c:"摄影"},{w:"postcard",c:"明信片"},{w:"program",c:"程序/节目"},{w:"screen",c:"屏幕"},{w:"smartphone",c:"智能手机"},{w:"socialmedia",c:"社交媒体"},{w:"software",c:"软件"},{w:"telephone",c:"电话"},{w:"upload",c:"上传"},{w:"volume",c:"音量"},{w:"website",c:"网站"},{w:"envelope",c:"信封"},{w:"equipment",c:"设备"},{w:"internet",c:"网络"},{w:"invent",c:"发明"},{w:"laptop",c:"手提电脑"},{w:"message",c:"信息"},
+{w:"absent",c:"缺席的"},{w:"advanced",c:"先进的"},{w:"beginner",c:"初学者"},{w:"biology",c:"生物"},{w:"chemistry",c:"化学"},{w:"coach",c:"教练/大巴"},{w:"college",c:"大学"},{w:"course",c:"课程"},{w:"degree",c:"学位"},{w:"dictionary",c:"字典"},{w:"geography",c:"地理"},{w:"history",c:"历史"},{w:"information",c:"信息"},{w:"instructions",c:"指导说明"},{w:"intelligent",c:"聪明的"},{w:"serious",c:"严肃的"},{w:"strict",c:"严格的"},{w:"passanexam",c:"通过考试"},{w:"takeanexam",c:"参加考试"},{w:"practice",c:"练习(n)"},{w:"practise",c:"练习(v)"},{w:"primaryschool",c:"小学"},{w:"project",c:"项目"},{w:"remember",c:"记得"},{w:"research",c:"研究"},{w:"science",c:"科学"},{w:"subject",c:"科目"},{w:"technology",c:"技术"},{w:"term",c:"学期"},{w:"university",c:"大学"},{w:"language",c:"语言"},{w:"naturestudies",c:"自然研究"},{w:"physics",c:"物理"},{w:"patient",c:"有耐心的"},{w:"reasonable",c:"合理的"},{w:"makeprogress",c:"进步"},{w:"revise",c:"复习"},{w:"handinhomework",c:"交作业"},
+{w:"action",c:"动作"},{w:"adventure",c:"冒险"},{w:"advert",c:"广告(简)"},{w:"advertisement",c:"广告"},{w:"article",c:"文章"},{w:"audience",c:"观众"},{w:"celebrity",c:"名人"},{w:"classicalmusic",c:"古典音乐"},{w:"comedy",c:"喜剧"},{w:"comic",c:"漫画"},{w:"competition",c:"比赛"},{w:"concert",c:"音乐会"},{w:"display",c:"展示"},{w:"drama",c:"戏剧"},{w:"entrance",c:"入口"},{w:"review",c:"评论/复习"},{w:"romantic",c:"浪漫的"},{w:"scene",c:"场景"},{w:"selfie",c:"自拍"},{w:"series",c:"系列"},{w:"historical",c:"历史的"},{w:"mystery",c:"神秘的"},{w:"sciencefiction",c:"科幻小说"},{w:"exit",c:"出口"},{w:"fireworks",c:"烟花"},{w:"headphones",c:"头戴耳机"},{w:"instrument",c:"乐器"},{w:"interview",c:"采访"},{w:"jazzmusic",c:"爵士乐"},{w:"journalist",c:"记者"},{w:"magazine",c:"杂志"},{w:"musician",c:"音乐家"},{w:"orchestra",c:"管弦乐队"},{w:"perform",c:"表演(v)"},{w:"performance",c:"表演(n)"},{w:"recording",c:"录音录像"},{w:"podcast",c:"播客"},{w:"stage",c:"舞台"},{w:"studio",c:"摄影棚"},{w:"thriller",c:"惊险小说"},{w:"fantasy",c:"幻想/想象"},{w:"non-fiction",c:"非小说文学"},
+{w:"exhibition",c:"展览"},{w:"festival",c:"节日"},
+{w:"climatechange",c:"气候变化"},{w:"gas",c:"气体/汽油"},{w:"litter",c:"垃圾(l)"},{w:"petrol",c:"汽油"},{w:"pollution",c:"污染"},{w:"prohibited",c:"被禁止的"},{w:"recycle",c:"回收"},{w:"rubbish",c:"垃圾(r)"},{w:"trafficjam",c:"交通拥堵"},{w:"volunteer",c:"志愿者"},{w:"publictransport",c:"公共交通"},
+{w:"barbecue",c:"烧烤"},{w:"biscuit",c:"饼干"},{w:"broccoli",c:"西兰花"},{w:"cafeteria",c:"自助餐厅"},{w:"cereal",c:"谷物"},{w:"chilli",c:"辣椒"},{w:"cream",c:"奶油"},{w:"curry",c:"咖喱"},{w:"delicious",c:"美味的"},{w:"dessert",c:"甜点"},{w:"diet",c:"饮食"},{w:"flavour",c:"风味"},{w:"grilled",c:"烤的"},{w:"ingredients",c:"配料"},{w:"lemonade",c:"柠檬水"},{w:"maincourse",c:"主菜"},{w:"lettuce",c:"生菜"},{w:"microwave",c:"微波炉"},{w:"mushroom",c:"蘑菇"},{w:"yogurt",c:"酸奶"},{w:"omelette",c:"煎蛋"},{w:"pasta",c:"意大利面"},{w:"pepper",c:"胡椒"},{w:"recipe",c:"秘诀/食谱"},{w:"refreshments",c:"点心(r)"},{w:"sandwich",c:"三明治"},{w:"sausage",c:"香肠"},{w:"snack",c:"点心(s)"},{w:"sour",c:"发酵/酸的"},{w:"spicy",c:"香辣的"},{w:"spinach",c:"菠菜"},{w:"steak",c:"牛排"},{w:"sugar",c:"糖"},{w:"taste",c:"味道"},{w:"tasty",c:"美味的"},{w:"vegetable",c:"蔬菜"},{w:"vegetarian",c:"素食者"},{w:"waiter",c:"服务员"},{w:"waitress",c:"女服务员"},
+{w:"accident",c:"事故"},{w:"ambulance",c:"救护车"},{w:"appointment",c:"预约"},{w:"bandage",c:"绷带"},{w:"chemist",c:"药房"},{w:"damage",c:"损坏"},{w:"dangerous",c:"危险的"},{w:"dentist",c:"牙医"},{w:"earache",c:"耳痛"},{w:"exercise",c:"锻炼"},{w:"gymnastics",c:"体操"},{w:"headache",c:"头痛"},{w:"health",c:"健康"},{w:"illness",c:"疾病"},{w:"keepfit",c:"保持健康"},{w:"medicine",c:"药品"},{w:"painful",c:"痛苦的"},{w:"problem",c:"问题"},{w:"sorethroat",c:"喉咙痛"},{w:"stomachache",c:"胃痛"},{w:"stress",c:"压力"},{w:"tablet",c:"药片/平板"},{w:"temperature",c:"温度"},{w:"toothache",c:"牙痛"},{w:"well",c:"健康的"},
+{w:"bicycle",c:"自行车"},{w:"camping",c:"露营"},{w:"campsite",c:"露营地"},{w:"facilities",c:"设施"},{w:"fiction",c:"小说/虚构"},{w:"gallery",c:"画廊"},{w:"iceskates",c:"冰鞋"},{w:"jogging",c:"慢跑"},{w:"member",c:"会员"},{w:"increase",c:"增加"},{w:"sculpture",c:"雕塑"},{w:"sightseeing",c:"观光"},{w:"sunbathe",c:"日光浴"},{w:"tent",c:"帐篷"},{w:"slide",c:"滑梯"},{w:"playground",c:"操场"},{w:"fan",c:"粉丝"},{w:"hire",c:"租用"},{w:"arrange",c:"安排"},
+{w:"alarmclock",c:"闹钟"},{w:"apartment",c:"公寓"},{w:"armchair",c:"扶手椅"},{w:"balcony",c:"阳台"},{w:"blanket",c:"毯子"},{w:"carpet",c:"地毯"},{w:"candle",c:"蜡烛"},{w:"heating",c:"供暖"},{w:"cupboard",c:"橱柜"},{w:"curtain",c:"窗帘"},{w:"downstairs",c:"楼下"},{w:"drawer",c:"抽屉"},{w:"flat",c:"公寓(f)"},{w:"furniture",c:"家具"},{w:"garage",c:"车库"},{w:"heater",c:"加热器"},{w:"lively",c:"有活力的"},{w:"tidy",c:"整洁的"},{w:"repair",c:"修理"},{w:"roof",c:"屋顶"},{w:"roommate",c:"室友"},{w:"seat",c:"座位"},{w:"stairs",c:"楼梯"},{w:"switch",c:"开关"},{w:"upstairs",c:"楼上"},{w:"vase",c:"花瓶"},{w:"washingmachine",c:"洗衣机"},{w:"convenient",c:"方便的"},{w:"neat",c:"整洁的"},{w:"housewife",c:"家庭主妇"},{w:"housework",c:"家务"},{w:"kettle",c:"水壶"},{w:"mirror",c:"镜子"},{w:"neighbour",c:"邻居"},{w:"pillow",c:"枕头"},{w:"radio",c:"收音机"},
+{w:"argue",c:"争论"},{w:"communicate",c:"交流"},{w:"grammar",c:"语法"},{w:"letter",c:"信件"},{w:"meaning",c:"含义"},{w:"Chinese",c:"中文"},{w:"Japanese",c:"日语"},{w:"Spanish",c:"西班牙语"},{w:"enjoyable",c:"愉快的"},{w:"useful",c:"有用的"},{w:"translate",c:"翻译"},{w:"vocabulary",c:"词汇"},{w:"speak",c:"说话"},{w:"sentence",c:"句子"},{w:"French",c:"法语"},{w:"Russian",c:"俄语"},{w:"Germany",c:"德语"},{w:"dull",c:"无聊的"},{w:"pointless",c:"无意义的"},{w:"useless",c:"无用的"},
+{w:"afraid",c:"害怕的"},{w:"alone",c:"独自地"},{w:"amazed",c:"感到惊讶地"},{w:"amazing",c:"令人惊讶地"},{w:"amusing",c:"有趣的"},{w:"annoyed",c:"恼怒的"},{w:"anxious",c:"焦急的"},{w:"awesome",c:"极佳的"},{w:"brilliant",c:"巧妙的/极好的"},{w:"calm",c:"镇静的"},{w:"careful",c:"小心的"},{w:"challenging",c:"有挑战的"},{w:"charming",c:"迷人的"},{w:"cheerful",c:"欢快的"},{w:"confident",c:"自信的"},{w:"curious",c:"好奇的"},{w:"delighted",c:"高兴的"},{w:"different",c:"不同的"},{w:"difficult",c:"困难的"},{w:"disappointed",c:"失望的"},{w:"disappointing",c:"令人失望的"},{w:"excellent",c:"卓越的"},{w:"excited",c:"兴奋的"},{w:"exciting",c:"令人兴奋的"},{w:"famous",c:"有名的"},{w:"fantastic",c:"极好的"},{w:"favourite",c:"最喜欢的"},{w:"promise",c:"答应"},{w:"accept",c:"接受"},{w:"complain",c:"抱怨"},{w:"healthy",c:"健康的"},{w:"important",c:"重要的"},{w:"impressed",c:"印象深刻的"},{w:"intelligent",c:"智慧的"},{w:"interested",c:"感兴趣的"},{w:"interesting",c:"有趣的"},{w:"modern",c:"现代的"},{w:"negative",c:"消极的"},{w:"ordinary",c:"普通的"},{w:"original",c:"原始的"},{w:"personal",c:"个人的"},{w:"pleasant",c:"愉快的"},{w:"positive",c:"积极的"},{w:"realistic",c:"实际的"},{w:"relaxed",c:"放松的"},{w:"reliable",c:"可靠的"},{w:"satisfied",c:"满意的"},{w:"wonderful",c:"绝妙的"},{w:"special",c:"特别的"},{w:"surprised",c:"惊讶的"},{w:"unusual",c:"不同寻常的"},{w:"respect",c:"尊重"},{w:"share",c:"分享"},{w:"trust",c:"信任"},{w:"generous",c:"大方的"},{w:"heavy",c:"重的"},
+{w:"bookshop",c:"书店"},{w:"building",c:"建筑物"},{w:"castle",c:"城堡"},{w:"cinema",c:"电影院"},{w:"factory",c:"工厂"},{w:"subway",c:"地铁"},{w:"library",c:"图书馆"},{w:"lift",c:"电梯"},{w:"museum",c:"博物馆"},{w:"shoppingcentre",c:"购物中心"},{w:"palace",c:"宫殿"},{w:"policestation",c:"警察局"},{w:"postoffice",c:"邮局"},{w:"railwaystation",c:"火车站"},{w:"sportscentre",c:"体育中心"},{w:"stadium",c:"体育场"},{w:"supermarket",c:"超市"},{w:"tower",c:"塔"},{w:"desert",c:"沙漠"},{w:"earth",c:"地球"},{w:"market",c:"市场"},{w:"motorway",c:"高速公路"},{w:"theatre",c:"剧场"},{w:"citycentre",c:"市中心"},{w:"mountain",c:"山"},{w:"busstation",c:"巴士站"},{w:"railway",c:"火车站/铁路"},{w:"rainforest",c:"热带雨林"},{w:"region",c:"地区"},{w:"scenery",c:"风景"},{w:"village",c:"村庄"},{w:"waterfall",c:"瀑布"},{w:"airport",c:"机场"},{w:"bridge",c:"桥"},
+{w:"cash",c:"现金"},{w:"change",c:"零钱/改变"},{w:"cheap",c:"便宜的"},{w:"choose",c:"选择"},{w:"closed",c:"关闭的"},{w:"collect",c:"收集"},{w:"customer",c:"顾客"},{w:"damaged",c:"损坏的"},{w:"exchange",c:"交换"},{w:"expensive",c:"昂贵的"},{w:"price",c:"价格"},{w:"reduce",c:"减少"},{w:"rent",c:"租金"},{w:"return",c:"返回/退货"},{w:"second-hand",c:"二手的"},{w:"shopassistant",c:"店员"},{w:"spend",c:"花费"},{w:"luxury",c:"奢侈的"},{w:"order",c:"订购"},
+{w:"athlete",c:"运动员"},{w:"champion",c:"冠军"},{w:"championship",c:"锦标赛"},{w:"changingroom",c:"更衣室"},{w:"competitor",c:"竞争者"},{w:"court",c:"球场"},{w:"cricket",c:"板球"},{w:"diving",c:"潜水"},{w:"fitness",c:"健康"},{w:"goalkeeper",c:"守门员"},{w:"helmet",c:"头盔"},{w:"hockey",c:"曲棍球"},{w:"horse-riding",c:"骑马"},{w:"icehockey",c:"冰球"},{w:"sailing",c:"帆船"},{w:"skateboard",c:"滑板"},{w:"skating",c:"滑冰"},{w:"skiing",c:"滑雪"},{w:"snowboard",c:"滑雪板"},{w:"surfboard",c:"冲浪板"},{w:"tabletennis",c:"乒乓球"},{w:"ticket",c:"票"},{w:"volleyball",c:"排球"},{w:"pitch",c:"场地"},{w:"prize",c:"奖品"},{w:"racket",c:"球拍"},{w:"rugby",c:"橄榄球"},
+{w:"butterfly",c:"蝴蝶"},{w:"bush",c:"灌木"},{w:"cave",c:"洞穴"},{w:"climate",c:"气候"},{w:"countryside",c:"郊外"},{w:"environment",c:"环境"},{w:"explore",c:"探索"},{w:"jungle",c:"丛林"},{w:"leaf",c:"叶子"},{w:"nature",c:"自然"},{w:"parrot",c:"鹦鹉"},{w:"breeze",c:"微风"},{w:"thunder",c:"雷声"},{w:"forecast",c:"预报"},{w:"foggy",c:"多雾的"},{w:"sunshine",c:"阳光"},{w:"species",c:"物种"},{w:"stone",c:"石头"},{w:"sunrise",c:"日出"},{w:"sunset",c:"日落"},{w:"wildlife",c:"野生生物"},{w:"world",c:"世界"},{w:"penguin",c:"企鹅"},{w:"planet",c:"行星"},{w:"freezing",c:"极冷的"},{w:"frozen",c:"结冰的"},{w:"lightning",c:"闪电"},{w:"snowfall",c:"降雪"},
+{w:"rock",c:"岩石"},{w:"space",c:"空间/太空"},
+{w:"abroad",c:"在国外"},{w:"arrive",c:"到达"},{w:"board",c:"登(车/船)"},{w:"carpark",c:"停车场"},{w:"confirm",c:"确认"},{w:"cyclist",c:"骑车人"},{w:"delay",c:"延迟"},{w:"deliver",c:"投递"},{w:"destination",c:"目的地"},{w:"fare",c:"费用"},{w:"flight",c:"航班"},{w:"guest",c:"客人"},{w:"guide",c:"向导"},{w:"harbour",c:"港口"},{w:"helicopter",c:"直升机"},{w:"journey",c:"旅程"},{w:"lorry",c:"卡车"},{w:"luggage",c:"行李"},{w:"machine",c:"机器"},{w:"motorbike",c:"摩托车"},{w:"overnight",c:"在夜间"},{w:"passenger",c:"乘客"},{w:"passport",c:"护照"},{w:"platform",c:"站台"},{w:"tourist",c:"游客"},{w:"crowded",c:"拥挤的"},{w:"distant",c:"遥远的"},{w:"reserve",c:"预订"},{w:"scooter",c:"滑板车"},{w:"suitcase",c:"行李箱"},{w:"noisy",c:"吵闹的"},{w:"unreliable",c:"不可靠的"},
+{w:"actor",c:"男演员"},{w:"actress",c:"女演员"},{w:"architect",c:"建筑师"},{w:"assistant",c:"助理"},{w:"artist",c:"艺术家"},{w:"astronaut",c:"宇航员"},{w:"businessman",c:"男商人"},{w:"businesswoman",c:"女商人"},{w:"career",c:"职业生涯"},{w:"canteen",c:"餐厅"},{w:"chef",c:"主厨"},{w:"colleague",c:"同事"},{w:"company",c:"公司"},{w:"crew",c:"全体船员"},{w:"designer",c:"设计师"},{w:"director",c:"导演"},{w:"employee",c:"雇员"},{w:"employer",c:"雇主"},{w:"engineer",c:"工程师"},{w:"salesman",c:"售货员"},{w:"soldier",c:"士兵"},{w:"mechanic",c:"技师"},{w:"occupation",c:"职业"},{w:"candidate",c:"候选人"},{w:"experience",c:"经验"},{w:"explorer",c:"探索者"},{w:"filmstar",c:"电影明星"},{w:"hairdresser",c:"理发师"},{w:"judge",c:"法官"},{w:"lawyer",c:"律师"},{w:"manager",c:"经理"},{w:"model",c:"模特"},{w:"nurse",c:"护士"},{w:"owner",c:"主人"},{w:"painter",c:"画家"},{w:"photographer",c:"摄影师"},{w:"pilot",c:"飞行员"},{w:"poet",c:"诗人"},{w:"policeman",c:"警察"},{w:"postman",c:"邮递员"},{w:"professional",c:"专业的"},{w:"receptionist",c:"接待员"},{w:"reporter",c:"记者"},{w:"scientist",c:"科学家"},{w:"novelist",c:"小说家"},{w:"salary",c:"薪水"},{w:"hard-working",c:"勤奋的"}
+];
+
+// ======================== STATE ========================
+let poolWrong=[],poolCorrect=[],sessionWords=[],placedWords=[];
+let reviewQueue=[],nextRoundQueue=[],reviewRound=1;
+let timerInterval=null,inputDirection='across';
+let timerStartedAt=0;
+// 分页状态
+let pages=[],currentPage=0;
+let allCorrectList=[],allWrongList=[];
+let pageSubmitted=false;
+
+// ======================== SM-2 算法 ========================
+function sm2CalcInterval(rep,curInt,ef){
+  if(rep<=0)return 1;if(rep===1)return 1;if(rep===2)return 6;
+  return Math.max(1,Math.round(curInt*ef));
+}
+function sm2OnCorrect(obj){
+  obj.repetitions=(obj.repetitions||0)+1;
+  obj.interval=sm2CalcInterval(obj.repetitions,obj.interval||1,obj.easeFactor||2.5);
+  obj.nextReview=Date.now()+obj.interval*864e5;
+}
+function sm2OnWrong(obj){
+  obj.repetitions=0;obj.interval=1;
+  obj.easeFactor=Math.max(1.3,(obj.easeFactor||2.5)-0.2);
+}
+
+// ======================== DATA MANAGEMENT ========================
+// 修复清单#5：去重
+function deduplicate(list){
+  const seen=new Set();
+  return list.filter(item=>{const k=item.w.toLowerCase().trim();if(seen.has(k))return false;seen.add(k);return true});
+}
+// 修复清单#1-4：增量修复，永不clear
+function ensureSm2Fields(item){
+  return{...item,w:item.w,c:item.c,weight:item.weight||0,interval:item.interval||1,
+    repetitions:item.repetitions||0,easeFactor:item.easeFactor||2.5,nextReview:item.nextReview||0,
+    sessionsSinceSeen:item.sessionsSinceSeen||0};
+}
+function migrateFromV48(){
+  const ow=localStorage.getItem('wp_trial_v741:pet_wrong_final');
+  const oc=localStorage.getItem('wp_trial_v741:pet_correct_final');
+  if(!ow&&!oc)return false;
+  try{
+    let wrong=ow?JSON.parse(ow).map(ensureSm2Fields):[];
+    let correct=oc?JSON.parse(oc).map(ensureSm2Fields):[];
+    // 修复清单#4：增量合并新词（大小写不敏感）
+    FULL_DB.forEach(db=>{
+      const k=db.w.toLowerCase();
+      if(!wrong.some(x=>x.w.toLowerCase()===k)&&!correct.some(x=>x.w.toLowerCase()===k))
+        wrong.push({w:db.w,c:db.c,weight:0,interval:1,repetitions:0,easeFactor:2.5,nextReview:0});
+    });
+    // 修复清单#3：回源补全中文
+    const fixC=list=>list.map(item=>{
+      const orig=FULL_DB.find(x=>x.w.toLowerCase()===item.w.toLowerCase());
+      if(orig&&!item.c)item.c=orig.c;return item;
+    });
+    wrong=fixC(wrong);correct=fixC(correct);
+    // 修复清单#5：去重
+    wrong=deduplicate(wrong);correct=deduplicate(correct);
+    localStorage.setItem('wp_trial_v741:wp_wrong',JSON.stringify(wrong));
+    localStorage.setItem('wp_trial_v741:wp_correct',JSON.stringify(correct));
+    localStorage.setItem('wp_trial_v741:wp_version','mvp-v1');
+    return true;
+  }catch(e){console.error('迁移失败',e);return false}
+}
+function saveData(){
+  try{
+    if(resetIncomplete||!storageIsCurrent())return false;
+    const tagged=items=>JSON.stringify(items.map(item=>({...item,_wpResetGeneration:storageGeneration})));
+    localStorage.setItem('wp_trial_v741:wp_wrong',tagged(poolWrong));
+    localStorage.setItem('wp_trial_v741:wp_correct',tagged(poolCorrect));
+    localStorage.setItem('wp_trial_v741:wp_version','mvp-v1');
+    return true;
+  }catch(e){
+    const status=document.getElementById('save-status');
+    if(status)status.textContent='保存失败，请先导出记录并保留此页面';
+    return false;
+  }
+}
+function loadData(){
+  if(!storageIsCurrent())return;
+  if(storageGeneration==='initial'&&!localStorage.getItem('wp_trial_v741:wp_version')){
+    migrateFromV48();
+  }
+  let w=localStorage.getItem('wp_trial_v741:wp_wrong'),c=localStorage.getItem('wp_trial_v741:wp_correct');
+  const readCurrent=value=>value?JSON.parse(value).filter(item=>storageGeneration==='initial'||item._wpResetGeneration===storageGeneration).map(ensureSm2Fields):[];
+  poolWrong=readCurrent(w);
+  poolCorrect=readCurrent(c);
+  // 修复清单#4：合并缺失词
+  FULL_DB.forEach(db=>{
+    const k=db.w.toLowerCase();
+    if(!poolWrong.some(x=>x.w.toLowerCase()===k)&&!poolCorrect.some(x=>x.w.toLowerCase()===k))
+      poolWrong.push({w:db.w,c:db.c,weight:0,interval:1,repetitions:0,easeFactor:2.5,nextReview:0});
+  });
+  // 修复清单#3：补全中文
+  const fixC=list=>list.map(item=>{
+    const orig=FULL_DB.find(x=>x.w.toLowerCase()===item.w.toLowerCase());
+    if(orig&&(!item.c||item.c==='undefined'))item.c=orig.c;return item;
+  });
+  poolWrong=fixC(poolWrong);poolCorrect=fixC(poolCorrect);
+  // 修复清单#5：去重
+  poolWrong=deduplicate(poolWrong);poolCorrect=deduplicate(poolCorrect);
+  saveData();
+}
+function exportData(){
+  const data={
+    exported:new Date().toISOString(),version:'v7.4.1',session:localStorage.getItem('wp_trial_v741:wp_round_v71'),
+    stats:{total:FULL_DB.length,newWords:poolWrong.filter(x=>x.weight===0).length,
+      hardWords:poolWrong.filter(x=>x.weight>0).length,mastered:poolCorrect.length},
+    poolWrong,poolCorrect
+  };
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download=`wordpuzzle-${new Date().toISOString().slice(0,10)}.json`;a.click();
+}
+function resetData(){openResetDialog();}
+function toggleSettings(){document.getElementById('settings').classList.toggle('open')}
+
+// ======================== UI ========================
+function updateDashboard(){
+  const nw=poolWrong.filter(x=>x.weight===0).length;
+  const hw=poolWrong.filter(x=>x.weight>0).length;
+  const mc=poolCorrect.length;
+  document.getElementById('s-new').textContent=nw;
+  document.getElementById('s-hard').textContent=hw;
+  document.getElementById('s-master').textContent=mc;
+  const total=nw+hw+mc,pct=total?Math.round(mc/total*100):0;
+  document.getElementById('progress-pill').textContent=pct+'%';
+  document.getElementById('prog-fill').style.width=pct+'%';
+  document.getElementById('prog-text').textContent=`已掌握 ${mc} / ${total} 词`;
+  saveData();
+}
+
+// ======================== WORD SELECTION (v6②：错误池每次出现 + 防埋没) ========================
+// 优先级：强制轮转(冷落>G局的难词) → 到期复习 → 其余难词(按分数) → 新词补足
+function selectWords(){
+  const now=Date.now(),size=10,selected=[],used=new Set();
+  const add=(items,limit=size)=>{let n=0;for(const w of items){if(selected.length>=size||n>=limit)break;const key=w.w.toLowerCase();if(!used.has(key)){selected.push(w);used.add(key);n++;}}};
+  const hard=poolWrong.filter(w=>w.weight>0).sort((a,b)=>(b.sessionsSinceSeen||0)-(a.sessionsSinceSeen||0)||(b.weight||0)-(a.weight||0));
+  const due=poolCorrect.filter(w=>w.nextReview&&w.nextReview<=now).sort((a,b)=>a.nextReview-b.nextReview);
+  const recentFailures=hard.filter(w=>w.lastFailedAt&&now-w.lastFailedAt<3*864e5).length;
+  const dueQuota=Math.min(8,Math.max(2,Math.ceil(due.length/2)));
+  // Unfinished words have first claim; overdue review gets a dynamic share.
+  add([...poolWrong,...poolCorrect].filter(w=>w.priorityNext));
+  add(hard.filter(w=>(w.sessionsSinceSeen||0)>=3),2);
+  add(due,Math.max(2,dueQuota-(recentFailures>=4?2:0)));
+  add(hard);
+  const fresh=poolWrong.filter(w=>!w.weight).sort(()=>Math.random()-.5);
+  add(fresh);add(due);
+  // Never force a not-yet-due word into a round merely to fill ten slots.
+  return selected;
+}
+
+// ======================== GRID GENERATION ========================
+// v6③：合法填字生成——要求至少1交叉、校验相邻冲突、放不下即丢弃（不再随机乱放），多次重试取最优
+function generateGrid(words){
+  if(words.length<=1){generateIslands(words);return;}
+  let maxLen=Math.max(...words.map(w=>w.w.length));
+  const S=Math.max(11,maxLen+2); // 网格随最长词自适应，容纳publictransport等超长拼接词，防越界
+  let best=null;
+  let sorted=[...words].sort((a,b)=>b.w.length-a.w.length);
+  const ATTEMPTS=Math.max(10,words.length*2);
+  for(let attempt=0;attempt<ATTEMPTS;attempt++){
+    let grid=Array(S).fill(null).map(()=>Array(S).fill(null));
+    let placed=[];
+    // 轮换种子词（不只翻方向），显著提高放置率
+    let first=sorted[attempt%sorted.length];
+    let list=[first,...sorted.filter(x=>x!==first)];
+    let sd=(Math.floor(attempt/sorted.length)%2===0)?'across':'down';
+    let r,c;
+    if(sd==='across'){r=Math.floor(S/2);c=Math.floor((S-first.w.length)/2);}
+    else{r=Math.floor((S-first.w.length)/2);c=Math.floor(S/2);}
+    placeWord(grid,first,r,c,sd,1);
+    placed.push({...first,num:1,row:r,col:c,dir:sd});
+    let num=2;
+    for(let i=1;i<list.length;i++){
+      let w=list[i],cand=[];
+      for(let p of placed){
+        for(let ci=0;ci<w.w.length;ci++){
+          for(let ti=0;ti<p.w.length;ti++){
+            if(p.w[ti].toLowerCase()!==w.w[ci].toLowerCase())continue;
+            let nd=p.dir==='across'?'down':'across';
+            let nr=p.dir==='across'?(p.row-ci):(p.row+ti);
+            let nc=p.dir==='across'?(p.col+ti):(p.col-ci);
+            let res=canPlace(grid,w.w,nr,nc,nd);
+            if(res.ok){
+              let ctr=(S-1)/2;
+              let midr=nd==='across'?nr:nr+(w.w.length-1)/2;
+              let midc=nd==='across'?nc+(w.w.length-1)/2:nc;
+              let dist=Math.abs(midr-ctr)+Math.abs(midc-ctr);
+              cand.push({nr,nc,nd,s:res.crosses*10-dist});
+            }
+          }
+        }
+      }
+      if(cand.length){
+        cand.sort((a,b)=>b.s-a.s);let b=cand[0];
+        placeWord(grid,w,b.nr,b.nc,b.nd,num);
+        let assigned=grid[b.nr][b.nc].num;
+        placed.push({...w,num:assigned,row:b.nr,col:b.nc,dir:b.nd});
+        if(assigned===num)num++;
+      }
+    }
+    if(!best||placed.length>best.placed.length)best={grid,placed,S};
+    if(best.placed.length===words.length)break;
+  }
+  if(best.placed.length!==words.length){generateIslands(words);return;}
+  placedWords=best.placed;
+  renderBoard(best.grid,best.S);
+}
+function inBounds(S,r,c){return r>=0&&c>=0&&r<S&&c<S;}
+// 返回 {ok, crosses}：校验越界、字母冲突、首尾粘连、平行贴边
+function canPlace(grid,word,row,col,dir){
+  const S=grid.length,len=word.length,across=dir==='across';
+  if(!inBounds(S,row,col))return{ok:false};
+  if(across){if(col+len>S)return{ok:false};}else{if(row+len>S)return{ok:false};}
+  // 首尾外扩一格必须为空（防止和相邻词首尾连成一串）
+  const bR=across?row:row-1,bC=across?col-1:col;
+  const aR=across?row:row+len,aC=across?col+len:col;
+  if(inBounds(S,bR,bC)&&grid[bR][bC])return{ok:false};
+  if(inBounds(S,aR,aC)&&grid[aR][aC])return{ok:false};
+  let crosses=0;
+  for(let i=0;i<len;i++){
+    const cr=across?row:row+i,cc=across?col+i:col;
+    const cell=grid[cr][cc];
+    if(cell){
+      if(cell.char.toLowerCase()!==word[i].toLowerCase())return{ok:false};
+      crosses++;
+    }else{
+      // 非交叉格：两侧垂直邻格必须为空（防止两个平行词贴边）
+      const s1r=across?cr-1:cr,s1c=across?cc:cc-1;
+      const s2r=across?cr+1:cr,s2c=across?cc:cc+1;
+      if(inBounds(S,s1r,s1c)&&grid[s1r][s1c])return{ok:false};
+      if(inBounds(S,s2r,s2c)&&grid[s2r][s2c])return{ok:false};
+    }
+  }
+  return crosses>0?{ok:true,crosses}:{ok:false};
+}
+function placeWord(grid,wObj,row,col,dir,num){
+  for(let i=0;i<wObj.w.length;i++){
+    let r=dir==='across'?row:row+i,c=dir==='across'?col+i:col;
+    let ex=grid[r][c]||{char:wObj.w[i],num:null,inAcross:false,inDown:false};
+    if(dir==='across')ex.inAcross=true;if(dir==='down')ex.inDown=true;
+    if(i===0&&!ex.num)ex.num=num;grid[r][c]=ex;
+  }
+}
+
+// ======================== RENDERING ========================
+function renderBoard(grid,S){
+  const box=document.getElementById('grid');
+  islandMode=false;lastGridSize=S;box.classList.remove('islands');
+  box.innerHTML='';
+  // 动态计算格子大小，确保网格适配屏幕
+  const availW=Math.min(window.innerWidth-42,500);
+  const cellSize=Math.min(42,Math.floor((availW-(S-1)*2-10)/S));
+  const fontSize=Math.max(14,Math.floor(cellSize*0.48));
+  const numSize=Math.max(8,Math.floor(cellSize*0.28));
+  box.style.gridTemplateColumns=`repeat(${S},${cellSize}px)`;
+  for(let r=0;r<S;r++){
+    for(let c=0;c<S;c++){
+      let d=grid[r][c],div=document.createElement('div');
+      div.className=d?'cell':'cell black';
+      if(d){
+        div.style.width=cellSize+'px';div.style.height=cellSize+'px';
+        div.dataset.r=r;div.dataset.c=c;div.dataset.ha=!!d.inAcross;div.dataset.hd=!!d.inDown;
+        if(d.num)div.innerHTML=`<span class="cell-num" style="font-size:${numSize}px">${d.num}</span>`;
+        let inp=document.createElement('input');inp.maxLength=1;inp.autocomplete='off';inp.setAttribute('autocapitalize','off');inp.setAttribute('autocorrect','off');inp.spellcheck=false;inp.setAttribute('aria-label',`第${r+1}行第${c+1}格`);
+        inp.style.fontSize=fontSize+'px';
+        inp.onclick=e=>handleCellClick(e,r,c,d);
+        inp.onfocus=()=>updateDirection(r,c,d);
+        inp.onkeydown=e=>handleKey(e,r,c);
+        inp.oninput=e=>handleInput(e,r,c);
+        div.appendChild(inp);
+      }else{
+        div.style.width=cellSize+'px';div.style.height=cellSize+'px';
+      }
+      box.appendChild(div);
+    }
+  }
+  renderClues();inputDirection='across';
+}
+function renderClues(){
+  const el=document.getElementById('clues');el.innerHTML='';
+  placedWords.sort((a,b)=>a.num-b.num).forEach(w=>{
+    let d=document.createElement('div');d.className='clue';
+    let arrow=w.dir==='across'?'→':'↓';
+    d.innerHTML=`<span class="clue-n">${w.num}</span><span class="clue-dir">${arrow}</span><span class="clue-cn">${w.c}</span>`;
+    d.onclick=()=>focusWord(w.num,w.dir);el.appendChild(d);
+  });
+}
+function focusWord(num,dir){
+  let pw=placedWords.find(w=>w.num===num&&w.dir===dir)||placedWords.find(w=>w.num===num);
+  if(!pw)return;inputDirection=pw.dir;
+  let div=document.querySelector(`div[data-r="${pw.row}"][data-c="${pw.col}"]`);
+  if(div){let inp=div.querySelector('input');if(inp)inp.focus();}
+  highlightWord(pw.row,pw.col);
+}
+
+// ======================== INTERACTION ========================
+function updateDirection(r,c,d){
+  if(d.inAcross&&!d.inDown)inputDirection='across';
+  else if(!d.inAcross&&d.inDown)inputDirection='down';
+  highlightWord(r,c);
+}
+function handleCellClick(e,r,c,d){
+  if(d.inAcross&&d.inDown&&e.detail===2)inputDirection=inputDirection==='across'?'down':'across';
+  updateDirection(r,c,d);
+}
+function highlightWord(r,c){
+  document.querySelectorAll('.cell.hl').forEach(el=>el.classList.remove('hl'));
+  let dr=inputDirection==='down'?1:0,dc=inputDirection==='across'?1:0;
+  let cr=r,cc=c;
+  while(true){
+    let pr=cr-dr,pc=cc-dc;
+    let pd=document.querySelector(`div[data-r="${pr}"][data-c="${pc}"]`);
+    if(!pd)break;
+    if(inputDirection==='across'&&pd.dataset.ha!=='true')break;
+    if(inputDirection==='down'&&pd.dataset.hd!=='true')break;
+    cr=pr;cc=pc;
+  }
+  while(true){
+    let div=document.querySelector(`div[data-r="${cr}"][data-c="${cc}"]`);
+    if(!div)break;
+    let ok=inputDirection==='across'?div.dataset.ha==='true':div.dataset.hd==='true';
+    if(!ok)break;div.classList.add('hl');cr+=dr;cc+=dc;
+  }
+}
+function handleKey(e,r,c){
+  if(e.key==='Tab')return;
+  if(e.key.match(/^[a-zA-Z-]$/)){e.preventDefault();e.target.value=e.key;moveFocus(r,c,1);saveSession();return;}
+  if(e.key==='Backspace'){e.preventDefault();if(e.target.value)e.target.value='';else moveFocus(r,c,-1);}
+}
+function handleInput(e,r,c){
+  if(/^[a-zA-Z-]$/.test(e.target.value)){moveFocus(r,c,1);}
+}
+function moveFocus(r,c,step){
+  let dr=inputDirection==='down'?1:0,dc=inputDirection==='across'?1:0;
+  let nr=r+dr*step,nc=c+dc*step;
+  let nd=document.querySelector(`div[data-r="${nr}"][data-c="${nc}"]`);
+  if(nd&&!nd.classList.contains('black')&&(inputDirection==='across'?nd.dataset.ha==='true':nd.dataset.hd==='true')){let inp=nd.querySelector('input');if(inp)inp.focus();}
+}
+
+// V7.1 records elapsed practice time without a forced timeout.
+function fmt(s){return`${Math.floor(s/60)}:${(s%60).toString().padStart(2,'0')}`;}
+
+</script>
+<link rel="stylesheet" href="./word-sounds.css">
+<script src="./audio-index.js"></script>
+<script src="./sound-map.js"></script>
+<script src="./word-sounds.js"></script>
+<script src="./learning-clock.js"></script>
+<script src="./reset-learning.js"></script>
+<script src="./round.js"></script>
+<script>
+fetch('./version.json').then(r=>r.json()).then(data=>{
+ const list=document.getElementById('version-items');
+ data.history.forEach(item=>{const li=document.createElement('li');li.textContent=`${item.version} · ${item.date||'日期未确认'} · ${item.summary}`;list.append(li);});
+}).catch(()=>{document.getElementById('version-items').textContent='版本记录暂不可用';});
+// ======================== PWA：安装 + 离线 ========================
+let deferredPrompt=null;
+window.addEventListener('beforeinstallprompt',e=>{
+  e.preventDefault();deferredPrompt=e;
+  document.getElementById('install-row').style.display='flex';
+});
+function isIOS(){return /iphone|ipad|ipod/i.test(navigator.userAgent);}
+function isStandalone(){return window.matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;}
+function installApp(){
+  if(deferredPrompt){
+    deferredPrompt.prompt();
+    deferredPrompt.userChoice.finally(()=>{deferredPrompt=null;document.getElementById('install-row').style.display='none';});
+  }else if(isIOS()){
+    alert('在 Safari 里点底部「分享」按钮 → 选「添加到主屏幕」即可安装。');
+  }else{
+    alert('若未自动弹出，请用浏览器菜单里的「添加到主屏幕 / 安装应用」。');
+  }
+}
+// iOS 无 beforeinstallprompt 事件，未安装时主动露出入口
+if(isIOS()&&!isStandalone()){var _ir=document.getElementById('install-row');if(_ir)_ir.style.display='flex';}
+// 注册 service worker
+if('serviceWorker' in navigator){
+  window.addEventListener('load',()=>{navigator.serviceWorker.register('./sw.js').catch(e=>console.warn('SW注册失败',e));});
+}
+</script>
+</body>
+</html>

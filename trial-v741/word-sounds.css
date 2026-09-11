@@ -1,0 +1,22 @@
+/* Only new sound UI; existing V7.1 selectors and stylesheet stay untouched. */
+.wrong-word-sound .sound-word{display:inline}
+.sound-trigger{font:inherit;line-height:inherit;vertical-align:baseline;border:0;background:transparent;padding:0 4px;cursor:pointer}
+.sound-trigger:focus-visible{outline:2px solid var(--primary);outline-offset:1px}
+.word-sound-dialog .sound-parts{display:flex;flex-wrap:wrap;justify-content:center;gap:7px;margin:18px 0}
+.word-sound-dialog .sound-parts span{display:inline-flex;align-items:center;justify-content:center;min-width:38px;min-height:38px;padding:5px 9px;background:#f2f0f8;border-radius:24px;font-size:1.25rem}
+.word-sound-dialog .sound-controls{display:flex;gap:8px;margin:12px 0}
+.word-sound-dialog .sound-controls button{min-height:44px}
+.word-sound-dialog .sound-heading{overflow-wrap:anywhere;text-align:center;font-size:clamp(1.8rem,7vw,2.8rem);font-weight:800;line-height:1.25;margin:10px 0 20px}
+.word-sound-dialog .sound-segment{display:inline-block}
+.word-sound-dialog .sound-divider{font-style:normal;font-size:.6em;color:var(--muted);padding:0 2px}
+.word-sound-dialog .sound-color-0{color:#193553}
+.word-sound-dialog .sound-color-1{color:#a74806}
+.word-sound-dialog .sound-color-2{color:#176156}
+.word-sound-dialog .sound-ipa,.word-sound-dialog .sound-meaning,.word-sound-dialog .sound-note{text-align:center}
+.word-sound-dialog .sound-meaning{font-size:1.15rem}
+.word-sound-dialog .sound-status:empty{display:none}
+
+.word-sound-dialog .sound-word-boundary{display:inline-block;min-width:.45em}
+.word-sound-dialog .sound-parts>span{flex-direction:column;gap:3px;max-width:100%;border-radius:18px}
+.word-sound-dialog .sound-part-letters{font-size:.75rem;line-height:1.1;font-weight:600;overflow-wrap:anywhere}
+.word-sound-dialog .sound-part-ipa{font-size:1.15rem;font-weight:400;overflow-wrap:anywhere}
