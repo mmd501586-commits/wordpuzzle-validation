@@ -269,6 +269,7 @@ function fitViewport(){
 }
 window.visualViewport?.addEventListener('resize',fitViewport);window.visualViewport?.addEventListener('scroll',fitViewport);fitViewport();
 document.querySelectorAll('.result-card,.review-card').forEach(card=>{const warning=document.createElement('p');warning.className='save-warning';warning.setAttribute('role','alert');card.prepend(warning);});
-try{loadData();updateDashboard();if(!restoreSession()&&!storageFailed)startNewGame();}
+try{recoverLearningTransfer();loadData();updateDashboard();if(!restoreSession()&&!storageFailed)startNewGame();}
 catch(e){storageFailed=true;byId('save-status').textContent='学习记录暂时无法读取，已停止初始化；请保留页面和原数据。';}
 if(storageFailed){byId('game').style.display='none';byId('ended').style.display='flex';byId('end-summary').textContent='存档暂时无法读取。请先在设置中导出记录，原存档未被覆盖。';byId('start-next').disabled=true;}
+if(storageFailed)showTransferRecoveryActions();

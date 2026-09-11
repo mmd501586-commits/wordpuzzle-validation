@@ -1,12 +1,13 @@
 // WordPuzzle Service Worker — 离线缓存 app shell
 // 升级 app 时改这个版本号即可让所有设备拉取新版（不动用户数据，数据在 localStorage）
 importScripts('./audio-index.js');
-const CACHE = 'wordpuzzle-v741-trial-20260911';
+const CACHE = 'wordpuzzle-v741-trial-v75-20260911';
 const ASSETS = [
   './',
   './index.html',
   './round.js',
   './reset-learning.js',
+  './learning-transfer.js',
   './learning-clock.js',
   './word-sounds.js',
   './sound-map.js',

@@ -1,9 +1,9 @@
 {
-  "version": "V7.4.1",
+  "version": "V7.5",
   "date": "2026-09-11",
   "status": "local-candidate",
-  "registeredVersions": 20,
-  "cacheName": "wordpuzzle-v7.4.1",
+  "registeredVersions": 21,
+  "cacheName": "wordpuzzle-v741-trial-v75-20260911",
   "history": [
     {
       "version": "V4.3",
@@ -104,6 +104,11 @@
       "version": "V7.4.1",
       "date": "2026-09-11",
       "summary": "清空学习记录及多页面旧进度回写修复"
+    },
+    {
+      "version": "V7.5",
+      "date": "2026-09-11",
+      "summary": "接续V7进度、跨浏览器导入、冲突预览与迁移备份；沿用固定存档"
     }
   ]
 }

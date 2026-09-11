@@ -53,7 +53,7 @@ document.getElementById('confirm-reset').onclick=()=>{
     resetIncomplete=true;
     storageGeneration=nextGeneration;
     roundState=null;clearTimeout(reviewTimer);reviewBusy=false;
-    for(const key of ['wp_trial_v741:wp_round_v71','wp_trial_v741:wp_wrong','wp_trial_v741:wp_correct','wp_trial_v741:pet_wrong_final','wp_trial_v741:pet_correct_final'])localStorage.removeItem(key);
+    for(const key of ['wp_trial_v741:transfer_backup','wp_trial_v741:transfer_pending','wp_trial_v741:transfer_receipt','wp_trial_v741:wp_round_v71','wp_trial_v741:wp_wrong','wp_trial_v741:wp_correct','wp_trial_v741:pet_wrong_final','wp_trial_v741:pet_correct_final'])localStorage.removeItem(key);
     localStorage.setItem('wp_trial_v741:wp_version','mvp-v1');
     location.reload();
   }catch(error){

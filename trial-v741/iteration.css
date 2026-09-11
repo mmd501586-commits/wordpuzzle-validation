@@ -22,3 +22,17 @@ dialog{margin:auto;border:1px solid var(--border);border-radius:18px;padding:24p
 dialog::backdrop{background:#10251ccc}dialog p{margin:12px 0;font-size:.85rem;line-height:1.6}
 dialog ol{padding-left:24px;margin-bottom:18px}dialog li{padding:8px 0;font-size:.85rem;line-height:1.5}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+#transfer-dialog h3{font-size:1rem;margin:18px 0 8px;overflow-wrap:anywhere}
+#transfer-dialog .btn-confirm{width:100%;margin-top:12px}
+#transfer-dialog .btn-sm{display:block;margin:16px auto 0}
+#transfer-dialog .btn-sm[hidden],#transfer-dialog [hidden]{display:none}
+#transfer-dialog button:disabled{opacity:.5;cursor:default}
+#transfer-dialog select,#transfer-dialog input{width:100%;margin:10px 0;padding:10px;font:inherit;max-width:100%;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text)}
+#transfer-dialog select{font-size:.85rem}
+#transfer-dialog .transfer-file{display:block;font-size:.9rem;font-weight:600;margin-top:12px}
+#transfer-error{color:#a52d22}
+#transfer-dialog .transfer-after{padding:12px;background:var(--surface-dim);border-radius:10px;font-weight:bold}
+#transfer-dialog details{margin-top:10px;font-size:.85rem}
+#transfer-dialog ul{padding-left:20px;max-height:25dvh;overflow:auto}
+#transfer-dialog li{padding:6px 0;overflow-wrap:anywhere}
