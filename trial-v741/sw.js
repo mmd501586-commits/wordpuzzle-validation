@@ -1,53 +1,75 @@
-// WordPuzzle Service Worker — 离线缓存 app shell
-// 升级 app 时改这个版本号即可让所有设备拉取新版（不动用户数据，数据在 localStorage）
+// A complete app shell activates independently of optional offline audio downloads.
 importScripts('./audio-index.js');
-const CACHE = 'wordpuzzle-v741-trial-v75-20260911';
-const ASSETS = [
-  './',
-  './index.html',
-  './round.js',
-  './reset-learning.js',
-  './learning-transfer.js',
-  './learning-clock.js',
-  './word-sounds.js',
-  './sound-map.js',
-  './CMUDICT-LICENSE.txt',
-  './audio-index.js',
-  './word-sounds.css',
-  './iteration.css',
-  './version.json',
-  './manifest.webmanifest',
-  './icon-192.png',
-  './icon-512.png',
-  './icon-maskable-512.png',
-  './apple-touch-icon.png',
-  ...AUDIO_WORDS.map(word=>'./audio/'+encodeURIComponent(word)+'.mp3')
-];
-
-self.addEventListener('install', e => {
-  e.waitUntil(
-    caches.open(CACHE).then(c => c.addAll(ASSETS)).then(() => self.skipWaiting())
-  );
+const APP_VERSION='V7.5.1';
+const CACHE='wordpuzzle-v741-trial-v751-20260911';
+const AUDIO_CACHE='wordpuzzle-trial-audio-v1';
+const CORE=['./','./index.html','./update.html','./app-updates.js','./round.js','./reset-learning.js','./learning-transfer.js','./learning-clock.js','./word-sounds.js','./sound-map.js','./CMUDICT-LICENSE.txt','./audio-index.js','./word-sounds.css','./iteration.css','./version.json','./manifest.webmanifest','./icon-192.png','./icon-512.png','./icon-maskable-512.png','./apple-touch-icon.png'];
+const AUDIO_URLS=AUDIO_WORDS.map(w=>new URL('./audio/'+encodeURIComponent(w)+'.mp3',self.registration.scope).href);
+const audioSet=new Set(AUDIO_URLS);
+let audioFlight=null,audioState={ready:0,total:AUDIO_URLS.length,failed:0,running:false};
+let audioPaused=false;const audioControllers=new Set();
+self.addEventListener('install',event=>{
+  event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(CORE.map(url=>new Request(new URL(url,self.registration.scope),{cache:'reload'})))).then(()=>self.skipWaiting()));
 });
-
-self.addEventListener('activate', e => {
-  e.waitUntil(
-    caches.keys()
-      .then(keys => Promise.all(keys.filter(k => k.startsWith('wordpuzzle-v741-trial-') && k !== CACHE).map(k => caches.delete(k))))
-      .then(() => self.clients.claim())
-  );
+async function broadcast(type){
+  const clients=await self.clients.matchAll({type:'window',includeUncontrolled:true});
+  for(const client of clients)if(client.url.startsWith(self.registration.scope))client.postMessage({type,version:APP_VERSION,audio:audioState});
+}
+self.addEventListener('activate',event=>{
+  event.waitUntil(self.clients.claim().then(()=>broadcast('APP_UPDATE_READY')));
 });
-
-self.addEventListener('fetch', e => {
-  if (e.request.method !== 'GET') return;
-  e.respondWith(
-    caches.open(CACHE).then(cache => cache.match(e.request)).then(cached => {
-      if (cached) return cached;
-      return fetch(e.request).then(resp => {
-        const copy = resp.clone();
-        caches.open(CACHE).then(c => c.put(e.request, copy));
-        return resp;
-      }).catch(() => caches.open(CACHE).then(cache => cache.match('./index.html')));
-    })
-  );
+async function warmAudio(){
+  if(audioFlight)return audioFlight;
+  audioFlight=(async()=>{
+    audioPaused=false;
+    const cache=await caches.open(AUDIO_CACHE);audioState={ready:0,total:AUDIO_URLS.length,failed:0,running:true};
+    let next=0;
+    async function run(){
+      while(next<AUDIO_URLS.length&&!audioPaused){
+        const url=AUDIO_URLS[next++];
+        try{
+          // Reuse unchanged audio from prior trial caches before fetching again.
+          let response=await cache.match(url);
+          if(!response){response=await caches.match(url);if(response?.ok)await cache.put(url,response.clone());}
+          if(!response?.ok){
+            if(audioPaused)break;
+            const controller=new AbortController();audioControllers.add(controller);const timeout=setTimeout(()=>controller.abort(),12000);
+            try{response=await fetch(url,{signal:controller.signal});if(!response.ok)throw Error('audio unavailable');await cache.put(url,response.clone());}
+            finally{clearTimeout(timeout);audioControllers.delete(controller);}
+          }
+          audioState.ready++;
+        }catch(error){audioState.failed++;}
+        if((audioState.ready+audioState.failed)%24===0)await broadcast('AUDIO_CACHE_PROGRESS');
+      }
+    }
+    await Promise.all(Array.from({length:4},()=>run()));audioState.running=false;
+    if(audioState.ready===audioState.total){
+      const keys=await caches.keys();await Promise.all(keys.filter(k=>k.startsWith('wordpuzzle-v741-trial-')&&k!==CACHE).map(k=>caches.delete(k)));
+    }
+    await broadcast('AUDIO_CACHE_PROGRESS');
+  })().finally(()=>{audioFlight=null;});
+  return audioFlight;
+}
+self.addEventListener('message',event=>{
+  if(event.data?.type==='PAUSE_AUDIO'){audioPaused=true;for(const controller of audioControllers)controller.abort();}
+  if(event.data?.type==='ACTIVATE_UPDATE')event.waitUntil(self.skipWaiting());
+  if(event.data?.type==='GET_UPDATE_STATUS')event.ports[0]?.postMessage({version:APP_VERSION,cache:CACHE,audio:audioState});
+  if(event.data?.type==='WARM_AUDIO')event.waitUntil(warmAudio());
+});
+self.addEventListener('fetch',event=>{
+  if(event.request.method!=='GET')return;
+  const url=event.request.url;
+  if(audioSet.has(url)){
+    event.respondWith((async()=>{
+      const cache=await caches.open(AUDIO_CACHE);
+      const cached=await cache.match(event.request)||await caches.match(event.request);
+      if(cached?.ok)return cached;
+      const response=await fetch(event.request);if(response.ok)await cache.put(event.request,response.clone());return response;
+    })());return;
+  }
+  event.respondWith((async()=>{
+    const cache=await caches.open(CACHE);const cached=await cache.match(event.request);if(cached)return cached;
+    try{return await fetch(event.request);}
+    catch(error){if(event.request.mode==='navigate')return await cache.match(new URL('./index.html',self.registration.scope));throw error;}
+  })());
 });

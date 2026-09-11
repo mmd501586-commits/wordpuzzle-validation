@@ -36,3 +36,7 @@ dialog ol{padding-left:24px;margin-bottom:18px}dialog li{padding:8px 0;font-size
 #transfer-dialog details{margin-top:10px;font-size:.85rem}
 #transfer-dialog ul{padding-left:20px;max-height:25dvh;overflow:auto}
 #transfer-dialog li{padding:6px 0;overflow-wrap:anywhere}
+
+.settings-panel.open{max-height:60dvh;overflow-y:auto}
+.update-status{font-size:.75rem;margin:0 16px 10px;color:var(--muted)}
+#apply-update[hidden]{display:none}

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no,viewport-fit=cover">
-<title>WordPuzzle V7.5 · 错词读音与拼读辅助</title>
+<title>WordPuzzle V7.5.1 · 错词读音与拼读辅助</title>
 <!-- PWA -->
 <link rel="manifest" href="./manifest.webmanifest">
 <meta name="theme-color" content="#1a4a3a">
@@ -270,7 +270,7 @@ body{
 <body>
 
 <div class="header">
-  <div><div class="header-title">Word<span>Puzzle</span></div><button class="version-link" onclick="document.getElementById('version-history').showModal()">V7.5 · 2026-09-11 · 版本记录</button></div>
+  <div><div class="header-title">Word<span>Puzzle</span></div><button class="version-link" onclick="document.getElementById('version-history').showModal()">V7.5.1 · 2026-09-11 · 版本记录</button></div>
   <div class="header-right">
     <span class="progress-pill" id="progress-pill">0%</span>
     <button class="btn-icon" onclick="toggleSettings()" title="设置">&#9881;</button>
@@ -279,6 +279,9 @@ body{
 
 <div class="settings-panel" id="settings">
   <div class="settings-row" id="install-row" style="display:none"><span class="settings-label">安装到主屏</span><button class="btn-sm" onclick="installApp()">立即安装</button></div>
+  <div class="settings-row"><span class="settings-label">应用更新</span><button class="btn-sm" id="check-update">检查更新</button><button class="btn-sm" id="apply-update" hidden>保存并刷新</button></div>
+  <p id="update-status" class="update-status">当前 V7.5.1</p>
+  <div class="settings-row"><span id="audio-cache-status" class="settings-label">离线读音准备中</span><button class="btn-sm" id="retry-audio-cache">重试缓存</button></div>
   <div class="settings-row"><span class="settings-label">接续旧版或其他浏览器进度</span><button class="btn-sm" id="open-transfer" onclick="openTransferDialog()">接续进度</button></div>
   <div class="settings-row"><span class="settings-label">导出学习记录</span><button class="btn-sm" onclick="exportData()">下载 JSON</button></div>
   <div class="settings-row"><span class="settings-label">关于</span><a href="https://github.com/mmd501586-commits/wordpuzzle-validation" target="_blank" rel="noopener">项目页面 ↗</a></div>
@@ -337,7 +340,7 @@ body{
  <div class="result-card"><div class="result-icon">🌙</div><h2>先休息一下</h2><p id="pause-summary"></p><p>下次回来，继续这一轮。</p><button class="btn-confirm" id="resume-btn" onclick="resumeRound()">继续上次练习</button><button class="btn-sm end-choice" id="pause-end-btn" onclick="endRound()">结束本轮</button></div>
 </div>
 <div class="result-overlay" id="ended"><div class="result-card"><div class="result-icon">🌿</div><h2>这一轮收好了</h2><p id="end-summary"></p><button class="btn-confirm" id="start-next" onclick="startNewGame()">开始新一轮</button></div></div>
-<dialog id="version-history"><h2>版本足迹</h2><p>当前 V7.5 · 2026-09-11 · 本地候选版</p><p>第 21 个版本登记条目（含 20 个历史标识）。登记数不等于完整发布次数。</p><ol id="version-items"></ol><form method="dialog"><button class="btn-confirm">关闭</button></form></dialog>
+<dialog id="version-history"><h2>版本足迹</h2><p>当前 V7.5.1 · 2026-09-11 · 本地候选版</p><p>第 22 个版本登记条目（含 21 个历史标识）。登记数不等于完整发布次数。</p><ol id="version-items"></ol><form method="dialog"><button class="btn-confirm">关闭</button></form></dialog>
 
 <script>
 // ======================== FULL DB (V4.8 词库完整保留) ========================
@@ -733,10 +736,8 @@ function installApp(){
 }
 // iOS 无 beforeinstallprompt 事件，未安装时主动露出入口
 if(isIOS()&&!isStandalone()){var _ir=document.getElementById('install-row');if(_ir)_ir.style.display='flex';}
-// 注册 service worker
-if('serviceWorker' in navigator){
-  window.addEventListener('load',()=>{navigator.serviceWorker.register('./sw.js').catch(e=>console.warn('SW注册失败',e));});
-}
+// Service Worker registration and update feedback are handled by app-updates.js.
 </script>
+<script src="./app-updates.js"></script>
 </body>
 </html>

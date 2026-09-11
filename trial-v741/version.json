@@ -1,9 +1,9 @@
 {
-  "version": "V7.5",
+  "version": "V7.5.1",
   "date": "2026-09-11",
   "status": "local-candidate",
-  "registeredVersions": 21,
-  "cacheName": "wordpuzzle-v741-trial-v75-20260911",
+  "registeredVersions": 22,
+  "cacheName": "wordpuzzle-v741-trial-v751-20260911",
   "history": [
     {
       "version": "V4.3",
@@ -109,6 +109,11 @@
       "version": "V7.5",
       "date": "2026-09-11",
       "summary": "接续V7进度、跨浏览器导入、冲突预览与迁移备份；沿用固定存档"
+    },
+    {
+      "version": "V7.5.1",
+      "date": "2026-09-11",
+      "summary": "应用更新与读音缓存分离；保留存档的更新入口和进度反馈"
     }
   ]
 }

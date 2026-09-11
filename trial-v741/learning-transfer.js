@@ -139,7 +139,7 @@ transferEl('import-file').onchange=async event=>{
 };
 transferEl('transfer-policy').onchange=showTransferPreview;
 function buildLearningExport(){
-  return {format:'wordpuzzle-learning',schema:1,version:'v7.5',exported:new Date().toISOString(),
+  return {format:'wordpuzzle-learning',schema:1,version:'v7.5.1',exported:new Date().toISOString(),
     poolWrong,poolCorrect,session:localStorage.getItem(ROUND_KEY)};
 }
 function downloadLearningJSON(data,name){
