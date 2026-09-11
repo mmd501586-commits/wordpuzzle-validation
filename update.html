@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>打开 WordPuzzle</title>
+<style>body{margin:0;background:#f0f5ec;color:#1a4a3a;font:17px/1.7 system-ui,sans-serif}main{max-width:480px;margin:12vh auto;padding:28px}h1{font-size:28px}button{font:inherit;background:#1a4a3a;color:white;padding:14px 22px;border:0;border-radius:28px;width:100%;margin:20px 0}button:disabled{opacity:.6}a{color:inherit}#status{min-height:4em}small{display:block;color:#5b766a}</style></head>
+<body><main><h1>打开 WordPuzzle</h1><p>打开学习页面，保留这个浏览器中的学习记录。无需清除数据，也无需重新安装图标。</p>
+<button id="run-update">打开学习页面</button><p id="status" role="status">准备更新到 V7.6 或后续版本。页面就绪后自动返回原学习网址。</p>
+<small>这里是统一后的学习网址，会继续使用已接续的最新学习记录。</small><p><a href="./">返回学习页面</a></p></main>
+<script>
+function statusOf(worker){return new Promise(resolve=>{
+  if(!worker){resolve(null);return;}const channel=new MessageChannel();const timeout=setTimeout(()=>{channel.port1.close();resolve(null);},1000);
+  channel.port1.onmessage=e=>{clearTimeout(timeout);channel.port1.close();resolve(e.data);};worker.postMessage({type:'GET_UPDATE_STATUS'},[channel.port2]);
+});}
+document.getElementById('run-update').onclick=async()=>{
+  const button=document.getElementById('run-update'),status=document.getElementById('status');button.disabled=true;status.textContent='正在准备最新版页面，学习记录保持不变…';
+  try{
+    if(!('serviceWorker' in navigator))throw Error('unsupported');
+    const root=new URL('./',location.href);
+    const existing=(await navigator.serviceWorker.getRegistrations()).find(reg=>reg.scope===root.href);
+    if(existing?.active?.state==='activated'&&!existing.installing&&!existing.waiting){const ready=await statusOf(existing.active);if(ready?.entry==='root'){location.replace('./');return;}}
+    const registration=await navigator.serviceWorker.register('./sw.js',{updateViaCache:'none'});await registration.update();
+    const pausedWorkers=new Set();
+    const deadline=Date.now()+45000;
+    while(Date.now()<deadline){
+      if(registration.installing||registration.waiting){
+        if(registration.active&&!pausedWorkers.has(registration.active)&&await caches.has('wordpuzzle-trial-audio-v1')){registration.active.postMessage({type:'PAUSE_AUDIO'});pausedWorkers.add(registration.active);}
+        registration.waiting?.postMessage({type:'ACTIVATE_UPDATE'});
+        await new Promise(resolve=>setTimeout(resolve,500));continue;
+      }
+      const info=await statusOf(registration.active);
+      if(info?.entry==='root'&&registration.active.state==='activated'&&!registration.installing&&!registration.waiting){
+        status.textContent=info.version+' 已就绪，正在打开…';registration.active.postMessage({type:'WARM_AUDIO'});location.replace('./');return;
+      }
+      await new Promise(resolve=>setTimeout(resolve,500));
+    }
+    throw Error('not ready');
+  }catch(error){status.textContent='本次未能完成更新，学习记录未清除。请保持联网后重试；不要清除此网站的数据。';button.disabled=false;}
+};
+if(new URLSearchParams(location.search).get('from')==='trial')document.getElementById('run-update').click();
+</script></body></html>

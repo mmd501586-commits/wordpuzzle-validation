@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no,viewport-fit=cover">
-<title>WordPuzzle - PET单词攻坚</title>
+<title>WordPuzzle V7.6 · 错词读音与拼读辅助</title>
 <!-- PWA -->
 <link rel="manifest" href="./manifest.webmanifest">
 <meta name="theme-color" content="#1a4a3a">
@@ -265,11 +265,12 @@ body{
 @media(max-width:380px){.clue{font-size:.82rem}}
 @media(min-width:520px){}
 </style>
+<link rel="stylesheet" href="./iteration.css">
 </head>
 <body>
 
 <div class="header">
-  <div class="header-title">Word<span>Puzzle</span></div>
+  <div><div class="header-title">Word<span>Puzzle</span></div><button class="version-link" onclick="document.getElementById('version-history').showModal()">V7.6 · 2026-09-12 · 版本记录</button></div>
   <div class="header-right">
     <span class="progress-pill" id="progress-pill">0%</span>
     <button class="btn-icon" onclick="toggleSettings()" title="设置">&#9881;</button>
@@ -278,10 +279,16 @@ body{
 
 <div class="settings-panel" id="settings">
   <div class="settings-row" id="install-row" style="display:none"><span class="settings-label">安装到主屏</span><button class="btn-sm" onclick="installApp()">立即安装</button></div>
+  <div class="settings-row"><span class="settings-label">应用更新</span><button class="btn-sm" id="check-update">检查更新</button><button class="btn-sm" id="apply-update" hidden>保存并刷新</button></div>
+  <p id="update-status" class="update-status">当前 V7.6</p>
+  <div class="settings-row"><span id="audio-cache-status" class="settings-label">离线读音准备中</span><button class="btn-sm" id="retry-audio-cache">重试缓存</button></div>
+  <div class="settings-row"><span class="settings-label">接续旧版或其他浏览器进度</span><button class="btn-sm" id="open-transfer" onclick="openTransferDialog()">接续进度</button></div>
   <div class="settings-row"><span class="settings-label">导出学习记录</span><button class="btn-sm" onclick="exportData()">下载 JSON</button></div>
+  <div class="settings-row"><span class="settings-label">关于</span><a href="https://github.com/mmd501586-commits/wordpuzzle-validation" target="_blank" rel="noopener">项目页面 ↗</a></div>
   <div class="settings-row"><span class="settings-label">重置所有数据</span><button class="btn-sm danger" onclick="resetData()">清空重置</button></div>
 </div>
 
+<div class="round-status"><strong id="round-progress"></strong><span id="phase-label"></span><small id="save-status" role="status">自动保存已开启</small></div>
 <div class="dashboard">
   <div class="stat"><span class="stat-label">新词</span><span class="stat-val new" id="s-new">0</span></div>
   <div class="stat"><span class="stat-label">待攻克</span><span class="stat-val hard" id="s-hard">0</span></div>
@@ -313,6 +320,7 @@ body{
     </div>
     <div class="result-wrong-list" id="r-list" style="display:none"></div>
     <button class="btn-confirm" id="r-btn" onclick="onResultNext()">继续</button>
+    <button class="btn-sm end-choice" id="end-btn" onclick="endRound()" style="display:none">今天到这里</button>
   </div>
 </div>
 
@@ -323,11 +331,16 @@ body{
     <div class="review-cn" id="rv-cn">—</div>
     <input type="text" class="review-input" id="rv-input" placeholder="输入英文拼写" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
     <div class="review-fb" id="rv-fb"></div>
-    <button class="btn-confirm" onclick="checkReview()">确认</button>
+    <button class="btn-confirm" id="review-confirm" onclick="checkReview()">确认</button>
   </div>
 </div>
 
-<a class="fab-feedback" href="https://github.com/mmd837/wordpuzzle/issues/new" target="_blank" rel="noopener">反馈</a>
+<button class="pause-control" id="pause-btn" onclick="pauseRound()">暂停并保存</button>
+<div class="result-overlay" id="paused" role="dialog" aria-modal="true" aria-label="已暂停">
+ <div class="result-card"><div class="result-icon">🌙</div><h2>先休息一下</h2><p id="pause-summary"></p><p>下次回来，继续这一轮。</p><button class="btn-confirm" id="resume-btn" onclick="resumeRound()">继续上次练习</button><button class="btn-sm end-choice" id="pause-end-btn" onclick="endRound()">结束本轮</button></div>
+</div>
+<div class="result-overlay" id="ended"><div class="result-card"><div class="result-icon">🌿</div><h2>这一轮收好了</h2><p id="end-summary"></p><button class="btn-confirm" id="start-next" onclick="startNewGame()">开始新一轮</button></div></div>
+<dialog id="version-history"><h2>版本足迹</h2><p>当前 V7.6 · 2026-09-12 · 本地候选版</p><p>第 22 个版本登记条目（含 21 个历史标识）。登记数不等于完整发布次数。</p><ol id="version-items"></ol><form method="dialog"><button class="btn-confirm">关闭</button></form></dialog>
 
 <script>
 // ======================== FULL DB (V4.8 词库完整保留) ========================
@@ -386,13 +399,13 @@ function deduplicate(list){
 }
 // 修复清单#1-4：增量修复，永不clear
 function ensureSm2Fields(item){
-  return{w:item.w,c:item.c,weight:item.weight||0,interval:item.interval||1,
+  return{...item,w:item.w,c:item.c,weight:item.weight||0,interval:item.interval||1,
     repetitions:item.repetitions||0,easeFactor:item.easeFactor||2.5,nextReview:item.nextReview||0,
     sessionsSinceSeen:item.sessionsSinceSeen||0};
 }
 function migrateFromV48(){
-  const ow=localStorage.getItem('pet_wrong_final');
-  const oc=localStorage.getItem('pet_correct_final');
+  const ow=localStorage.getItem('wp_trial_v741:pet_wrong_final');
+  const oc=localStorage.getItem('wp_trial_v741:pet_correct_final');
   if(!ow&&!oc)return false;
   try{
     let wrong=ow?JSON.parse(ow).map(ensureSm2Fields):[];
@@ -411,24 +424,35 @@ function migrateFromV48(){
     wrong=fixC(wrong);correct=fixC(correct);
     // 修复清单#5：去重
     wrong=deduplicate(wrong);correct=deduplicate(correct);
-    localStorage.setItem('wp_wrong',JSON.stringify(wrong));
-    localStorage.setItem('wp_correct',JSON.stringify(correct));
-    localStorage.setItem('wp_version','mvp-v1');
+    localStorage.setItem('wp_trial_v741:wp_wrong',JSON.stringify(wrong));
+    localStorage.setItem('wp_trial_v741:wp_correct',JSON.stringify(correct));
+    localStorage.setItem('wp_trial_v741:wp_version','mvp-v1');
     return true;
   }catch(e){console.error('迁移失败',e);return false}
 }
 function saveData(){
-  localStorage.setItem('wp_wrong',JSON.stringify(poolWrong));
-  localStorage.setItem('wp_correct',JSON.stringify(poolCorrect));
-  localStorage.setItem('wp_version','mvp-v1');
+  try{
+    if(resetIncomplete||!storageIsCurrent())return false;
+    const tagged=items=>JSON.stringify(items.map(item=>({...item,_wpResetGeneration:storageGeneration})));
+    localStorage.setItem('wp_trial_v741:wp_wrong',tagged(poolWrong));
+    localStorage.setItem('wp_trial_v741:wp_correct',tagged(poolCorrect));
+    localStorage.setItem('wp_trial_v741:wp_version','mvp-v1');
+    return true;
+  }catch(e){
+    const status=document.getElementById('save-status');
+    if(status)status.textContent='保存失败，请先导出记录并保留此页面';
+    return false;
+  }
 }
 function loadData(){
-  if(!localStorage.getItem('wp_version')){
+  if(!storageIsCurrent())return;
+  if(storageGeneration==='initial'&&!localStorage.getItem('wp_trial_v741:wp_version')){
     migrateFromV48();
   }
-  let w=localStorage.getItem('wp_wrong'),c=localStorage.getItem('wp_correct');
-  poolWrong=w?JSON.parse(w).map(ensureSm2Fields):[];
-  poolCorrect=c?JSON.parse(c).map(ensureSm2Fields):[];
+  let w=localStorage.getItem('wp_trial_v741:wp_wrong'),c=localStorage.getItem('wp_trial_v741:wp_correct');
+  const readCurrent=value=>value?JSON.parse(value).filter(item=>storageGeneration==='initial'||item._wpResetGeneration===storageGeneration).map(ensureSm2Fields):[];
+  poolWrong=readCurrent(w);
+  poolCorrect=readCurrent(c);
   // 修复清单#4：合并缺失词
   FULL_DB.forEach(db=>{
     const k=db.w.toLowerCase();
@@ -446,21 +470,9 @@ function loadData(){
   saveData();
 }
 function exportData(){
-  const data={
-    exported:new Date().toISOString(),version:'mvp-v1',
-    stats:{total:FULL_DB.length,newWords:poolWrong.filter(x=>x.weight===0).length,
-      hardWords:poolWrong.filter(x=>x.weight>0).length,mastered:poolCorrect.length},
-    poolWrong,poolCorrect
-  };
-  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
-  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
-  a.download=`wordpuzzle-${new Date().toISOString().slice(0,10)}.json`;a.click();
+  downloadLearningJSON(buildLearningExport(),`wordpuzzle-${new Date().toISOString().slice(0,10)}.json`);
 }
-function resetData(){
-  if(!confirm('确定要清空所有学习数据吗？\n此操作不可恢复。'))return;
-  localStorage.removeItem('wp_wrong');localStorage.removeItem('wp_correct');
-  localStorage.removeItem('wp_version');location.reload();
-}
+function resetData(){openResetDialog();}
 function toggleSettings(){document.getElementById('settings').classList.toggle('open')}
 
 // ======================== UI ========================
@@ -481,32 +493,27 @@ function updateDashboard(){
 // ======================== WORD SELECTION (v6②：错误池每次出现 + 防埋没) ========================
 // 优先级：强制轮转(冷落>G局的难词) → 到期复习 → 其余难词(按分数) → 新词补足
 function selectWords(){
-  const SIZE=10,G=3,REVIEW_Q=4,NEW_Q=4;
-  const now=Date.now();
-  const key=x=>x.w.toLowerCase();
-  let sel=[],used=new Set();
-  const add=arr=>{for(const x of arr){if(sel.length>=SIZE)break;if(!used.has(key(x))){sel.push(x);used.add(key(x));}}};
-  // 难词打分：错得越多、越久没出现越优先
-  const score=x=>(1+(x.weight||0))*(1+(x.sessionsSinceSeen||0)*0.5);
-  let hard=poolWrong.filter(x=>x.weight>0).sort((a,b)=>score(b)-score(a));
-  // 1) 强制轮转：任何超过 G 局没出现的难词必然重现（"每次都要出现"的工程化落地）
-  add(hard.filter(x=>(x.sessionsSinceSeen||0)>G));
-  // 2) 正确池今日到期复习词
-  let due=poolCorrect.filter(x=>x.nextReview&&x.nextReview<=now).sort((a,b)=>b.weight-a.weight);
-  add(due.slice(0,REVIEW_Q));
-  // 3) 其余难词按分数补
+  const now=Date.now(),size=10,selected=[],used=new Set();
+  const add=(items,limit=size)=>{let n=0;for(const w of items){if(selected.length>=size||n>=limit)break;const key=w.w.toLowerCase();if(!used.has(key)){selected.push(w);used.add(key);n++;}}};
+  const hard=poolWrong.filter(w=>w.weight>0).sort((a,b)=>(b.sessionsSinceSeen||0)-(a.sessionsSinceSeen||0)||(b.weight||0)-(a.weight||0));
+  const due=poolCorrect.filter(w=>w.nextReview&&w.nextReview<=now).sort((a,b)=>a.nextReview-b.nextReview);
+  const recentFailures=hard.filter(w=>w.lastFailedAt&&now-w.lastFailedAt<3*864e5).length;
+  const dueQuota=Math.min(8,Math.max(2,Math.ceil(due.length/2)));
+  // Unfinished words have first claim; overdue review gets a dynamic share.
+  add([...poolWrong,...poolCorrect].filter(w=>w.priorityNext));
+  add(hard.filter(w=>(w.sessionsSinceSeen||0)>=3),2);
+  add(due,Math.max(2,dueQuota-(recentFailures>=4?2:0)));
   add(hard);
-  // 4) 新词补足
-  let nw=poolWrong.filter(x=>x.weight===0).sort(()=>.5-Math.random());
-  add(nw.slice(0,NEW_Q));
-  // 5) 仍不足：继续用剩余新词、复习词填满
-  add(nw);add(due);
-  return sel;
+  const fresh=poolWrong.filter(w=>!w.weight).sort(()=>Math.random()-.5);
+  add(fresh);add(due);
+  // Never force a not-yet-due word into a round merely to fill ten slots.
+  return selected;
 }
 
 // ======================== GRID GENERATION ========================
 // v6③：合法填字生成——要求至少1交叉、校验相邻冲突、放不下即丢弃（不再随机乱放），多次重试取最优
 function generateGrid(words){
+  if(words.length<=1){generateIslands(words);return;}
   let maxLen=Math.max(...words.map(w=>w.w.length));
   const S=Math.max(11,maxLen+2); // 网格随最长词自适应，容纳publictransport等超长拼接词，防越界
   let best=null;
@@ -556,6 +563,7 @@ function generateGrid(words){
     if(!best||placed.length>best.placed.length)best={grid,placed,S};
     if(best.placed.length===words.length)break;
   }
+  if(best.placed.length!==words.length){generateIslands(words);return;}
   placedWords=best.placed;
   renderBoard(best.grid,best.S);
 }
@@ -599,6 +607,7 @@ function placeWord(grid,wObj,row,col,dir,num){
 // ======================== RENDERING ========================
 function renderBoard(grid,S){
   const box=document.getElementById('grid');
+  islandMode=false;lastGridSize=S;box.classList.remove('islands');
   box.innerHTML='';
   // 动态计算格子大小，确保网格适配屏幕
   const availW=Math.min(window.innerWidth-42,500);
@@ -614,7 +623,7 @@ function renderBoard(grid,S){
         div.style.width=cellSize+'px';div.style.height=cellSize+'px';
         div.dataset.r=r;div.dataset.c=c;div.dataset.ha=!!d.inAcross;div.dataset.hd=!!d.inDown;
         if(d.num)div.innerHTML=`<span class="cell-num" style="font-size:${numSize}px">${d.num}</span>`;
-        let inp=document.createElement('input');inp.maxLength=1;
+        let inp=document.createElement('input');inp.maxLength=1;inp.autocomplete='off';inp.setAttribute('autocapitalize','off');inp.setAttribute('autocorrect','off');inp.spellcheck=false;inp.setAttribute('aria-label',`第${r+1}行第${c+1}格`);
         inp.style.fontSize=fontSize+'px';
         inp.onclick=e=>handleCellClick(e,r,c,d);
         inp.onfocus=()=>updateDirection(r,c,d);
@@ -653,8 +662,7 @@ function updateDirection(r,c,d){
   highlightWord(r,c);
 }
 function handleCellClick(e,r,c,d){
-  if(d.inAcross&&d.inDown&&document.activeElement===e.target)
-    inputDirection=inputDirection==='across'?'down':'across';
+  if(d.inAcross&&d.inDown&&e.detail===2)inputDirection=inputDirection==='across'?'down':'across';
   updateDirection(r,c,d);
 }
 function highlightWord(r,c){
@@ -678,292 +686,37 @@ function highlightWord(r,c){
 }
 function handleKey(e,r,c){
   if(e.key==='Tab')return;
-  if(e.key.match(/^[a-zA-Z]$/)){e.preventDefault();e.target.value=e.key;recordTap();moveFocus(r,c,1);return;}
+  if(e.key.match(/^[a-zA-Z-]$/)){e.preventDefault();e.target.value=e.key;moveFocus(r,c,1);saveSession();return;}
   if(e.key==='Backspace'){e.preventDefault();if(e.target.value)e.target.value='';else moveFocus(r,c,-1);}
 }
 function handleInput(e,r,c){
-  if(/^[a-zA-Z]$/.test(e.target.value)){recordTap();moveFocus(r,c,1);}
+  if(/^[a-zA-Z-]$/.test(e.target.value)){moveFocus(r,c,1);}
 }
 function moveFocus(r,c,step){
   let dr=inputDirection==='down'?1:0,dc=inputDirection==='across'?1:0;
   let nr=r+dr*step,nc=c+dc*step;
   let nd=document.querySelector(`div[data-r="${nr}"][data-c="${nc}"]`);
-  if(nd&&!nd.classList.contains('black')){let inp=nd.querySelector('input');if(inp)inp.focus();}
+  if(nd&&!nd.classList.contains('black')&&(inputDirection==='across'?nd.dataset.ha==='true':nd.dataset.hd==='true')){let inp=nd.querySelector('input');if(inp)inp.focus();}
 }
 
-// ======================== 倒计时科学公式 + 点击速度自适应 (v6①) ========================
-let _lastTap=0;
-function recordTap(){
-  const now=Date.now();
-  if(_lastTap){
-    const dt=(now-_lastTap)/1000;
-    if(dt>0.12&&dt<3){ // 忽略误触(过快)与思考停顿(过长)
-      let arr;try{arr=JSON.parse(localStorage.getItem('wp_taps')||'[]')}catch(e){arr=[]}
-      arr.push(dt);if(arr.length>40)arr=arr.slice(-40);
-      localStorage.setItem('wp_taps',JSON.stringify(arr));
-      const s=[...arr].sort((a,b)=>a-b);const med=s[Math.floor(s.length/2)];
-      localStorage.setItem('wp_tap',med.toFixed(3));
-    }
-  }
-  _lastTap=now;
-}
-function medianTapTime(){
-  let t=parseFloat(localStorage.getItem('wp_tap'));
-  if(!(t>=0.4&&t<=1.5))t=0.7; // 无数据或异常用默认0.7s
-  return t;
-}
-// T = k × Σ(t_think + L×t_tap + t_locate)：错误池词更费脑，时长随孩子手速自适应
-function computeTimeLimit(words){
-  const tTap=medianTapTime(),tLocate=0.5,k=1.25;
-  let sum=0;
-  words.forEach(w=>{
-    const inCorrect=poolCorrect.some(x=>x.w.toLowerCase()===w.w.toLowerCase());
-    const tThink=inCorrect?1.5:3.0;
-    sum+=tThink+w.w.length*tTap+tLocate;
-  });
-  return Math.max(20,Math.round(k*sum));
-}
-
-// ======================== TIMER ========================
-function startTimer(s){
-  clearInterval(timerInterval);timerStartedAt=Date.now();
-  let el=document.getElementById('timer');el.classList.remove('warn');el.textContent=fmt(s);
-  timerInterval=setInterval(()=>{
-    s--;el.textContent=fmt(s);
-    if(s<=30)el.classList.add('warn');
-    if(s<=0){
-      clearInterval(timerInterval);
-      setTimeout(()=>{
-        // 修复清单#7：超时给用户选择
-        if(confirm('时间到！\n\n点击【确定】增加 60 秒\n点击【取消】直接提交')){
-          startTimer(60);
-        }else{submitGame();}
-      },100);
-    }
-  },1000);
-}
+// V7.1 records elapsed practice time without a forced timeout.
 function fmt(s){return`${Math.floor(s/60)}:${(s%60).toString().padStart(2,'0')}`;}
 
-// ======================== GAME FLOW ========================
-function startNewGame(){
-  clearInterval(timerInterval);
-  document.getElementById('game').style.display='flex';
-  document.getElementById('result').style.display='none';
-  document.getElementById('review').style.display='none';
-  let sel=selectWords();
-  if(sel.length===0){showAllDone();return;}
-  sessionWords=sel;
-  // v6②：更新错误池冷落计数——本局出现的清零，其余+1（配合强制轮转，防难词被埋没）
-  const inSession=new Set(sel.map(x=>x.w.toLowerCase()));
-  poolWrong.forEach(x=>{
-    if(inSession.has(x.w.toLowerCase()))x.sessionsSinceSeen=0;
-    else x.sessionsSinceSeen=(x.sessionsSinceSeen||0)+1;
-  });
-  allCorrectList=[];allWrongList=[];
-  // 分页：每页4个词
-  pages=[];
-  for(let i=0;i<sel.length;i+=4)pages.push(sel.slice(i,i+4));
-  currentPage=0;
-  startTimer(computeTimeLimit(sessionWords));updateDashboard(); // v6①：科学倒计时
-  showCurrentPage();
-}
-function showCurrentPage(){
-  pageSubmitted=false;
-  let words=pages[currentPage];
-  generateGrid(words);
-  renderPageNav();
-  let btn=document.getElementById('btn-submit');
-  btn.textContent='提交';
-  btn.disabled=false;
-  // 跳过按钮：只在非最后一页显示
-  let skip=document.getElementById('btn-skip');
-  skip.style.display=currentPage<pages.length-1?'inline':'none';
-}
-function renderPageNav(){
-  let nav=document.getElementById('page-nav');nav.innerHTML='';
-  for(let i=0;i<pages.length;i++){
-    let dot=document.createElement('span');dot.className='page-dot';
-    if(i===currentPage)dot.classList.add('active');
-    else if(i<currentPage){
-      // 已提交的页，判断是否有错误
-      let pageWords=pages[i];
-      let hasWrong=pageWords.some(w=>allWrongList.find(x=>x.w===w.w));
-      dot.classList.add(hasWrong?'wrong':'done');
-    }
-    nav.appendChild(dot);
-  }
-}
-function showAllDone(){
-  document.getElementById('game').style.display='none';
-  let r=document.getElementById('result');r.style.display='flex';
-  document.getElementById('r-icon').textContent='🎯';
-  document.getElementById('r-title').textContent='所有单词已掌握！';
-  document.getElementById('r-correct').textContent='0';
-  document.getElementById('r-wrong').textContent='0';
-  document.getElementById('r-time').textContent='—';
-  document.getElementById('r-list').style.display='none';
-  document.getElementById('r-btn').textContent='好';
-  window._resultNext=()=>{r.style.display='none';setTimeout(()=>startNewGame(),100);};
-}
-function submitPage(){
-  if(pageSubmitted)return;
-  pageSubmitted=true;
-  let words=pages[currentPage];
-  let correctList=[],wrongList=[];
-  words.forEach(w=>{
-    let pw=placedWords.find(p=>p.w===w.w);if(!pw)return;let right=true;
-    for(let i=0;i<pw.w.length;i++){
-      let r=pw.dir==='across'?pw.row:pw.row+i,c=pw.dir==='across'?pw.col+i:pw.col;
-      let val=document.querySelector(`div[data-r='${r}'][data-c='${c}'] input`);
-      if(!val||val.value.toLowerCase()!==pw.w[i].toLowerCase())right=false;
-    }
-    if(right)correctList.push(pw);else wrongList.push(pw);
-  });
-  correctList.forEach(w=>flashWord(w,'correct-flash'));
-  wrongList.forEach(w=>flashWord(w,'wrong-flash'));
-  // 禁用当前页输入
-  document.querySelectorAll('.cell input').forEach(inp=>inp.disabled=true);
-  // 更新SM-2
-  correctList.forEach(w=>{
-    let obj=poolWrong.find(x=>x.w===w.w)||poolCorrect.find(x=>x.w===w.w);
-    if(obj){
-      if(poolWrong.includes(obj)){poolWrong.splice(poolWrong.indexOf(obj),1);
-        if(!poolCorrect.includes(obj))poolCorrect.push(obj);}
-      sm2OnCorrect(obj);
-    }
-  });
-  wrongList.forEach(w=>{
-    let obj=poolCorrect.find(x=>x.w===w.w);
-    if(obj){poolCorrect.splice(poolCorrect.indexOf(obj),1);if(!poolWrong.includes(obj))poolWrong.push(obj);}
-    else obj=poolWrong.find(x=>x.w===w.w);
-    if(obj){sm2OnWrong(obj);obj.weight=(obj.weight||0)+10;}
-  });
-  allCorrectList.push(...correctList);
-  allWrongList.push(...wrongList);
-  updateDashboard();renderPageNav();
-  // 切换按钮文字（不替换onclick）
-  let btn=document.getElementById('btn-submit');
-  document.getElementById('btn-skip').style.display='none';
-  if(currentPage<pages.length-1){
-    btn.textContent='下一页 →';
-  }else{
-    btn.textContent='查看结果 →';
-  }
-}
-function skipPage(){
-  // 跳过：本页所有词标记为错误
-  let words=pages[currentPage];
-  words.forEach(w=>{
-    let obj=poolWrong.find(x=>x.w===w.w)||poolCorrect.find(x=>x.w===w.w);
-    if(obj){
-      if(poolCorrect.includes(obj)){poolCorrect.splice(poolCorrect.indexOf(obj),1);if(!poolWrong.includes(obj))poolWrong.push(obj);}
-      sm2OnWrong(obj);obj.weight=(obj.weight||0)+10;
-      allWrongList.push(obj);
-    }
-  });
-  updateDashboard();
-  currentPage++;
-  if(currentPage<pages.length){showCurrentPage();}
-  else{showFinalResults();}
-}
-function showFinalResults(){
-  clearInterval(timerInterval);
-  let elapsed=Math.round((Date.now()-timerStartedAt)/1000);
-  let r=document.getElementById('result');r.style.display='flex';
-  // v6④：数字得分
-  let totalW=allCorrectList.length+allWrongList.length;
-  let scr=totalW?Math.round(allCorrectList.length/totalW*100):100;
-  document.getElementById('r-icon').textContent=allWrongList.length===0?'🎉':(scr>=60?'📝':'💪');
-  document.getElementById('r-title').innerHTML=`得分 <span style="color:var(--accent)">${scr}</span> 分`;
-  document.getElementById('r-correct').textContent=allCorrectList.length;
-  document.getElementById('r-wrong').textContent=allWrongList.length;
-  document.getElementById('r-time').textContent=elapsed+'s';
-  if(allWrongList.length>0){
-    let list=document.getElementById('r-list');list.style.display='block';
-    list.innerHTML=allWrongList.map(w=>`<span>${w.c}</span> → ${w.w}`).join('<br>');
-    document.getElementById('r-btn').textContent='开始复习';
-    window._resultNext=()=>{r.style.display='none';startReview(allWrongList);};
-  }else{
-    document.getElementById('r-list').style.display='none';
-    document.getElementById('r-btn').textContent='继续练习';
-    window._resultNext=()=>{r.style.display='none';startNewGame();};
-  }
-}
-function onResultNext(){if(window._resultNext)window._resultNext();}
-function flashWord(w,cls){
-  for(let i=0;i<w.w.length;i++){
-    let r=w.dir==='across'?w.row:w.row+i,c=w.dir==='across'?w.col+i:w.col;
-    let div=document.querySelector(`div[data-r='${r}'][data-c='${c}']`);
-    if(div){div.classList.add(cls);setTimeout(()=>div.classList.remove(cls),1200);}
-  }
-}
-
-// ======================== REVIEW ========================
-function startReview(list){
-  document.getElementById('game').style.display='none';
-  document.getElementById('review').style.display='flex';
-  reviewQueue=list.map(w=>{
-    let real=poolWrong.find(x=>x.w===w.w)||poolCorrect.find(x=>x.w===w.w);
-    let orig=FULL_DB.find(x=>x.w.toLowerCase()===w.w.toLowerCase());
-    let m=real?{...real}:{w:w.w,c:w.c,weight:0,interval:1,repetitions:0,easeFactor:2.5,nextReview:0};
-    if(!m.c&&orig)m.c=orig.c;return m;
-  });
-  nextRoundQueue=[];reviewRound=1;showReviewCard();
-}
-function showReviewCard(){
-  if(reviewQueue.length===0){endReviewRound();return;}
-  let w=reviewQueue[0];
-  document.getElementById('rv-round').textContent=reviewRound;
-  document.getElementById('rv-badge').textContent='权重: '+w.weight;
-  document.getElementById('rv-cn').textContent=w.c||'—';
-  let inp=document.getElementById('rv-input');inp.value='';inp.focus();
-  document.getElementById('rv-fb').innerHTML='';
-}
-function checkReview(){
-  let inp=document.getElementById('rv-input'),w=reviewQueue[0];
-  let fb=document.getElementById('rv-fb');
-  if(inp.value.toLowerCase().trim()===w.w.toLowerCase()){
-    fb.innerHTML='<span style="color:var(--correct)">✓ 正确！</span>';
-    setTimeout(()=>{reviewQueue.shift();showReviewCard();},500);
-  }else{
-    fb.innerHTML=`<span style="color:var(--wrong)">✗ 答案: ${w.w}</span>`;
-    let real=poolWrong.find(x=>x.w===w.w)||poolCorrect.find(x=>x.w===w.w);
-    if(real){real.weight+=10;w.weight+=10;}
-    updateDashboard();
-    if(!nextRoundQueue.find(x=>x.w===w.w))nextRoundQueue.push(w);
-    setTimeout(()=>{reviewQueue.shift();showReviewCard();},1500);
-  }
-}
-function endReviewRound(){
-  if(nextRoundQueue.length===0||reviewRound>=3){finishReview();return;}
-  reviewRound++;reviewQueue=[...nextRoundQueue];nextRoundQueue=[];showReviewCard();
-}
-function finishReview(){
-  document.getElementById('review').style.display='none';startNewGame();
-}
-document.getElementById('rv-input').addEventListener('keydown',e=>{
-  if(e.key==='Enter'){e.preventDefault();checkReview();}
-});
-
-// ======================== BUTTON HANDLERS ========================
-// 统一事件监听，根据状态判断行为，永远不动态替换handler
-document.getElementById('btn-submit').addEventListener('click',function(){
-  if(!pageSubmitted){
-    submitPage();
-  }else{
-    // 已提交，进入下一页或查看结果
-    if(currentPage<pages.length-1){
-      currentPage++;showCurrentPage();
-    }else{
-      showFinalResults();
-    }
-  }
-});
-document.getElementById('btn-skip').addEventListener('click',skipPage);
-
-// ======================== INIT ========================
-loadData();updateDashboard();startNewGame();
-
+</script>
+<link rel="stylesheet" href="./word-sounds.css">
+<script src="./audio-index.js"></script>
+<script src="./sound-map.js"></script>
+<script src="./word-sounds.js"></script>
+<script src="./learning-clock.js"></script>
+<script src="./reset-learning.js"></script>
+<script src="./learning-transfer.js"></script>
+<script src="./entry-continuity.js"></script>
+<script src="./round.js"></script>
+<script>
+fetch('./version.json').then(r=>r.json()).then(data=>{
+ const list=document.getElementById('version-items');
+ data.history.forEach(item=>{const li=document.createElement('li');li.textContent=`${item.version} · ${item.date||'日期未确认'} · ${item.summary}`;list.append(li);});
+}).catch(()=>{document.getElementById('version-items').textContent='版本记录暂不可用';});
 // ======================== PWA：安装 + 离线 ========================
 let deferredPrompt=null;
 window.addEventListener('beforeinstallprompt',e=>{
@@ -984,10 +737,8 @@ function installApp(){
 }
 // iOS 无 beforeinstallprompt 事件，未安装时主动露出入口
 if(isIOS()&&!isStandalone()){var _ir=document.getElementById('install-row');if(_ir)_ir.style.display='flex';}
-// 注册 service worker
-if('serviceWorker' in navigator){
-  window.addEventListener('load',()=>{navigator.serviceWorker.register('./sw.js').catch(e=>console.warn('SW注册失败',e));});
-}
+// Service Worker registration and update feedback are handled by app-updates.js.
 </script>
+<script src="./app-updates.js"></script>
 </body>
 </html>
