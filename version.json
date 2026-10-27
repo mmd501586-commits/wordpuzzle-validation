@@ -1,9 +1,9 @@
 {
-  "version": "V7.7",
-  "date": "2026-10-27",
-  "status": "learning-history",
-  "registeredVersions": 24,
-  "cacheName": "wordpuzzle-main-v77-20261027",
+  "version": "V7.7.1",
+  "date": "2026-10-28",
+  "status": "input-continuity",
+  "registeredVersions": 25,
+  "cacheName": "wordpuzzle-main-v771-20261028",
   "history": [
     {
       "version": "V4.3",
@@ -124,6 +124,11 @@
       "version": "V7.7",
       "date": "2026-10-27",
       "summary": "学习流程与页面操作分层保存；按轮查看、单轮与全部 JSON 导出；新轮保留旧记录"
+    },
+    {
+      "version": "V7.7.1",
+      "date": "2026-10-28",
+      "summary": "交叉格连续输入、加时保留输入焦点、切换词从首格开始；沿用学习进度与过程记录"
     }
   ]
 }

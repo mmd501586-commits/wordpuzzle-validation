@@ -1,5 +1,5 @@
 // Update only application resources. Learning records remain in the fixed profile.
-const CURRENT_APP_VERSION='V7.7';
+const CURRENT_APP_VERSION='V7.7.1';
 function getWorkerStatus(worker){
   return new Promise(resolve=>{
     if(!worker){resolve(null);return;}

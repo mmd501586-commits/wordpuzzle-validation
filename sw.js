@@ -1,7 +1,7 @@
 // A complete app shell activates independently of optional offline audio downloads.
 importScripts('./audio-index.js');
-const APP_VERSION='V7.7';
-const CACHE='wordpuzzle-main-v77-20261027';
+const APP_VERSION='V7.7.1';
+const CACHE='wordpuzzle-main-v771-20261028';
 const AUDIO_CACHE='wordpuzzle-trial-audio-v1';
 const CORE=['./','./index.html','./update.html','./app-updates.js','./entry-continuity.js','./learning-history.js','./learning-history.css','./round.js','./reset-learning.js','./learning-transfer.js','./learning-clock.js','./word-sounds.js','./sound-map.js','./CMUDICT-LICENSE.txt','./audio-index.js','./word-sounds.css','./iteration.css','./version.json','./manifest.webmanifest','./icon-192.png','./icon-512.png','./icon-maskable-512.png','./apple-touch-icon.png'];
 const AUDIO_URLS=AUDIO_WORDS.map(w=>new URL('./audio/'+encodeURIComponent(w)+'.mp3',self.registration.scope).href);

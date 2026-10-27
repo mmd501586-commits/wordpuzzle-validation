@@ -1,4 +1,4 @@
-// V7.7: local append-only history. The profile and learning algorithm stay unchanged.
+// V7.7.1: local append-only history. The profile and learning algorithm stay unchanged.
 (() => {
   const PREFIX='wp_trial_v741:history:', DB='wp_trial_v741:learning_history';
   const uniqueId=()=>globalThis.crypto?.randomUUID?.()||Date.now().toString(36)+'-'+Math.random().toString(36).slice(2);
@@ -57,7 +57,7 @@
       // An upgraded unfinished round has no invented history for its earlier part.
       round.historyCoverage=round.historyCoverage||(type==='round_started'?'from_start':'partial');
       const event={id:uniqueId(),at:new Date(now).toISOString(),tabId,roundId:round.id,
-        generation:storageGeneration,version:'V7.7',layer,type,phase:round.phase,
+        generation:storageGeneration,version:'V7.7.1',layer,type,phase:round.phase,
         batchId:round.id+':'+(round.phase==='review'?'practice:'+((round.testCount||0)+1):'test:'+(round.testCount||0)),
         page:typeof currentPage==='number'?currentPage:null,elapsedMs:round.elapsedMs??round.elapsed*1000,data};
       pending.push(event);
