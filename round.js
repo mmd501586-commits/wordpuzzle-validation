@@ -61,17 +61,18 @@ function saveSession(){
 }
 function hidePanels(){closeTimePrompt();closeWordSound();['result','review','paused','ended'].forEach(id=>byId(id).style.display='none');}
 function hideKeyboard(){if(document.activeElement instanceof HTMLElement)document.activeElement.blur();}
-function startRound(words){
+function startRound(words,reason='user'){
   clearTimeout(reviewTimer);reviewBusy=false;
   const unique=deduplicate(words.map(w=>({...w})));
   if(!unique.length){showEmpty();return;}
   roundState={id:`${Date.now()}-${Math.random().toString(36).slice(2)}`,original:unique,passed:[],
     phase:'test',testWords:[],reviewBatch:[],testCount:0,elapsed:0,paused:false,startedAt:Date.now()};
+  recordLearning('round_started',{words:unique.map(wordKey),reason,selection:unique.map(w=>({word:wordKey(w),reason:w.selectionReason||'provided_batch'}))});
   const selected=new Set(unique.map(wordKey));
   poolWrong.forEach(w=>w.sessionsSinceSeen=selected.has(wordKey(w))?0:(w.sessionsSinceSeen||0)+1);
   beginTest(unique);updateDashboard();saveSession();
 }
-function startNewGame(){startRound(selectWords());}
+function startNewGame(reason='user'){startRound(selectWords(),typeof reason==='string'?reason:'user');}
 function beginTest(words){
   hidePanels();byId('game').style.display='flex';
   roundState.phase='test';roundState.paused=false;roundState.testWords=words.map(w=>({...w}));
@@ -79,6 +80,7 @@ function beginTest(words){
   sessionWords=roundState.testWords;pages=[];
   for(let i=0;i<sessionWords.length;i+=4)pages.push(sessionWords.slice(i,i+4));
   allCorrectList=[];allWrongList=[];currentPage=0;
+  recordLearning('test_started',{words:words.map(wordKey),passedBefore:[...roundState.passed],testCount:roundState.testCount});
   showCurrentPage();updateRoundProgress();saveSession();
 }
 function showCurrentPage(){
@@ -86,6 +88,7 @@ function showCurrentPage(){
   generateGrid(pages[currentPage]);renderPageNav();
   byId('btn-submit').textContent='提交';byId('btn-submit').disabled=false;
   byId('btn-skip').style.display=currentPage<pages.length-1?'inline':'none';
+  recordLearning('page_shown',{words:pages[currentPage].map(wordKey),page:currentPage+1,pageCount:pages.length,layout:placedWords.map(w=>({word:wordKey(w),row:w.row,col:w.col,direction:w.dir,number:w.num})),inputDirection});
   saveSession();
 }
 function renderPageNav(){
@@ -97,7 +100,7 @@ function renderPageNav(){
     byId('page-nav').append(dot);
   });
 }
-function recordTest(w,correct){
+function recordTest(w,correct,answer='',reason='submitted'){
   const key=wordKey(w);
   const obj=poolWrong.find(x=>wordKey(x)===key)||poolCorrect.find(x=>wordKey(x)===key);
   if(!obj)return;
@@ -113,18 +116,21 @@ function recordTest(w,correct){
     if(!poolWrong.some(x=>wordKey(x)===key))poolWrong.push(obj);
     sm2OnWrong(obj);obj.weight=(obj.weight||0)+10;obj.lastFailedAt=Date.now();obj.nextReview=Date.now();
   }
+  recordLearning('word_result',{word:key,correct,answer,reason,passed:[...roundState.passed],remaining:remainingWords().map(wordKey)});
 }
 function submitPage(fromTimeout=false){
   if(pageSubmitted||roundState.phase!=='test'||roundState.paused||(!fromTimeout&&roundState.countdown?.expired))return;
   pageSubmitted=true;
+  recordLearning('page_submitted',{page:currentPage+1,words:pages[currentPage].map(wordKey),reason:fromTimeout?'timeout':'submit'});
   pages[currentPage].forEach(w=>{
-    const pw=placedWords.find(p=>p.w===w.w);let right=!!pw;
+    const pw=placedWords.find(p=>p.w===w.w);let right=!!pw,answer='';
     if(pw)for(let i=0;i<pw.w.length;i++){
       const r=pw.row+(pw.dir==='down'?i:0),c=pw.col+(pw.dir==='across'?i:0);
       const input=document.querySelector(`#grid div[data-r='${r}'][data-c='${c}'] input`);
+      answer+=input?.value||' ';
       if(!input||input.value.toLowerCase()!==pw.w[i].toLowerCase())right=false;
     }
-    recordTest(w,right);(right?allCorrectList:allWrongList).push(w);
+    recordTest(w,right,answer,!pw?'not_placed':fromTimeout?'timeout':!answer.trim()?'blank':'submitted');(right?allCorrectList:allWrongList).push(w);
     if(pw)flashWord(pw,right?'correct-flash':'wrong-flash');
   });
   document.querySelectorAll('#grid input').forEach(inp=>inp.disabled=true);
@@ -136,6 +142,7 @@ function skipPage(){if(roundState.countdown?.expired){syncLearningClock();return
 function showFinalResults(){
   roundState.phase='result';hideKeyboard();hidePanels();byId('game').style.display='none';
   const remaining=remainingWords();
+  recordLearning('test_completed',{words:roundState.testWords.map(wordKey),passed:[...roundState.passed],remaining:remaining.map(wordKey),canFinish:canFinish()});
   byId('result').style.display='flex';
   byId('r-icon').textContent=canFinish()?'🎉':'🌱';
   byId('r-title').textContent=remaining.length?(canFinish()?'本轮完成，继续由你决定':'找到漏洞，一起再试试'):'这轮全部通过！';
@@ -155,6 +162,8 @@ function startReview(list){
   hidePanels();byId('game').style.display='none';byId('review').style.display='flex';
   roundState.phase='review';roundState.reviewBatch=list.map(w=>({w:w.w,c:w.c}));
   reviewQueue=roundState.reviewBatch.map(w=>({...w}));nextRoundQueue=[];reviewRound=1;
+  recordLearning('practice_started',{words:roundState.reviewBatch.map(wordKey),passedBefore:[...roundState.passed]});
+  recordLearning('practice_pass_started',{pass:reviewRound,words:reviewQueue.map(wordKey)});
   showReviewCard();updateRoundProgress();saveSession();
 }
 function showReviewCard(){
@@ -170,6 +179,7 @@ function checkReview(){
   if(reviewBusy||roundState.phase!=='review'||roundState.paused||!reviewQueue.length)return;
   reviewBusy=true;const w=reviewQueue.shift();
   const correct=byId('rv-input').value.toLowerCase().trim()===w.w.toLowerCase();
+  recordLearning('practice_answer',{word:wordKey(w),answer:byId('rv-input').value,correct,pass:reviewRound,passed:[...roundState.passed]});
   if(!correct&&!nextRoundQueue.some(x=>x.w===w.w))nextRoundQueue.push(w);
   byId('rv-fb').textContent=correct?'✓ 正确！':`✗ 答案: ${w.w}`;
   byId('rv-input').disabled=true;byId('review-confirm').disabled=true;
@@ -178,16 +188,18 @@ function checkReview(){
 }
 function endReviewRound(){
   if(!nextRoundQueue.length||reviewRound>=3){finishReview();return;}
-  reviewRound++;reviewQueue=[...nextRoundQueue];nextRoundQueue=[];showReviewCard();
+  reviewRound++;reviewQueue=[...nextRoundQueue];nextRoundQueue=[];
+  recordLearning('practice_pass_started',{pass:reviewRound,words:reviewQueue.map(wordKey)});showReviewCard();
 }
 function finishReview(){
   clearTimeout(reviewTimer);reviewBusy=false;
+  recordLearning('practice_completed',{words:roundState.reviewBatch.map(wordKey),passes:reviewRound});
   roundState.testCount++;beginTest(roundState.reviewBatch);
 }
 function pauseRound(){
   syncLearningClock(false);closeTimePrompt();closeWordSound();
   if(!roundState||roundState.phase==='ended')return;
-  roundState.paused=true;clearTimeout(reviewTimer);
+  roundState.paused=true;clearTimeout(reviewTimer);recordLearning('round_paused',{passed:[...roundState.passed]});
   // Feedback has already advanced the queue; never score it a second time.
   if(reviewBusy)showReviewCard();
   roundState.paused=true;
@@ -198,6 +210,7 @@ function pauseRound(){
 }
 function resumeRound(){
   roundState.paused=false;resetClockReference();byId('paused').style.display='none';
+  recordLearning('round_resumed',{passed:[...roundState.passed]});
   if(roundState.phase==='review')byId('rv-input').focus();saveSession();
 }
 function endRound(){
@@ -205,6 +218,7 @@ function endRound(){
   clearTimeout(reviewTimer);reviewBusy=false;
   remainingWords().forEach(w=>{const obj=poolWrong.find(x=>wordKey(x)===wordKey(w))||poolCorrect.find(x=>wordKey(x)===wordKey(w));if(obj){obj.priorityNext=true;obj.nextReview=Date.now();}});
   roundState.phase='ended';roundState.paused=false;
+  recordLearning('round_ended',{passed:[...roundState.passed],remaining:remainingWords().map(wordKey)});
   hideKeyboard();hidePanels();byId('game').style.display='none';byId('ended').style.display='flex';
   byId('end-summary').textContent=`本轮通过 ${roundState.passed.length} 个词。${remainingWords().length?'剩余 '+remainingWords().length+' 个已安排优先复习。':'下次按到期时间复习。'}`;
   updateDashboard();saveSession();
@@ -241,6 +255,7 @@ function restoreSession(){
     if(!v.reviewBusy&&roundState.phase==='review')byId('rv-input').value=v.reviewInput||'';
   }else if(roundState.phase==='result')showFinalResults();
   restoring=false;updateRoundProgress();
+  recordLearning('round_restored',{passed:[...roundState.passed],phase:roundState.phase,coverage:roundState.historyCoverage||'partial',savedFocus:v.focus,savedValues:v.values,inputDirection:v.inputDirection,layout:placedWords.map(w=>({word:wordKey(w),row:w.row,col:w.col,direction:w.dir,number:w.num}))});
   if(roundState.paused)pauseRound();else saveSession();return true;
 }
 function flashWord(w,cls){
@@ -270,7 +285,7 @@ function fitViewport(){
 window.visualViewport?.addEventListener('resize',fitViewport);window.visualViewport?.addEventListener('scroll',fitViewport);fitViewport();
 document.querySelectorAll('.result-card,.review-card').forEach(card=>{const warning=document.createElement('p');warning.className='save-warning';warning.setAttribute('role','alert');card.prepend(warning);});
 initializeUnifiedApplication(()=>{
-try{loadData();updateDashboard();if(!restoreSession()&&!storageFailed)startNewGame();}
+try{loadData();updateDashboard();if(!restoreSession()&&!storageFailed)startNewGame('startup');}
 catch(e){storageFailed=true;byId('save-status').textContent='学习记录暂时无法读取，已停止初始化；请保留页面和原数据。';}
 if(storageFailed){byId('game').style.display='none';byId('ended').style.display='flex';byId('end-summary').textContent='存档暂时无法读取。请先在设置中导出记录，原存档未被覆盖。';byId('start-next').disabled=true;}
 if(storageFailed)showTransferRecoveryActions();

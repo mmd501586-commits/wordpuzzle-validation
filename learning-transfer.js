@@ -131,7 +131,7 @@ transferEl('read-legacy').onclick=()=>{
 transferEl('import-file').onchange=async event=>{
   const token=++transferReading;invalidateTransfer();const file=event.target.files[0];if(!file)return;
   try{
-    if(file.size>2*1024*1024)throw Error('文件超过 2 MB，未读取。请选择 WordPuzzle 导出的学习记录。');
+    if(file.size>64*1024*1024)throw Error('文件超过 64 MB，未读取。请选择较小的 WordPuzzle 学习记录。');
     const data=JSON.parse((await file.text()).replace(/^\uFEFF/,''));
     if(token!==transferReading||!transferDialog.open)return;
     acceptTransferSource(data,'来源文件：'+file.name);
@@ -139,7 +139,7 @@ transferEl('import-file').onchange=async event=>{
 };
 transferEl('transfer-policy').onchange=showTransferPreview;
 function buildLearningExport(){
-  return {format:'wordpuzzle-learning',schema:1,version:'v7.5.1',exported:new Date().toISOString(),
+  return {format:'wordpuzzle-learning',schema:1,version:'V7.7',exported:new Date().toISOString(),
     poolWrong,poolCorrect,session:localStorage.getItem(ROUND_KEY)};
 }
 function downloadLearningJSON(data,name){

@@ -1,9 +1,9 @@
 {
-  "version": "V7.6",
-  "date": "2026-09-12",
-  "status": "unified-entry",
-  "registeredVersions": 23,
-  "cacheName": "wordpuzzle-main-v76-20260912",
+  "version": "V7.7",
+  "date": "2026-10-27",
+  "status": "learning-history",
+  "registeredVersions": 24,
+  "cacheName": "wordpuzzle-main-v77-20261027",
   "history": [
     {
       "version": "V4.3",
@@ -119,6 +119,11 @@
       "version": "V7.6",
       "date": "2026-09-12",
       "summary": "统一原网址与学习档案，旧试用入口兼容转向，保留最新进度与未完成题目"
+    },
+    {
+      "version": "V7.7",
+      "date": "2026-10-27",
+      "summary": "学习流程与页面操作分层保存；按轮查看、单轮与全部 JSON 导出；新轮保留旧记录"
     }
   ]
 }

@@ -6,7 +6,7 @@ function entryMessage(worker,message,timeout=1200){return new Promise(resolve=>{
   channel.port1.onmessage=e=>{clearTimeout(timer);channel.port1.close();resolve(e.data);};worker.postMessage(message,[channel.port2]);
 });}
 if('serviceWorker' in navigator)navigator.serviceWorker.addEventListener('message',event=>{
-  if(event.data?.type==='UNIFIED_DOCUMENT_CHECK')event.ports[0]?.postMessage({version:'V7.6'});
+  if(event.data?.type==='UNIFIED_DOCUMENT_CHECK')event.ports[0]?.postMessage({version:'V7.7'});
 });
 async function waitEntryWorker(registration,kind){
   const paused=new Set();const deadline=Date.now()+45000;
@@ -16,7 +16,7 @@ async function waitEntryWorker(registration,kind){
       registration.waiting?.postMessage({type:'ACTIVATE_UPDATE'});await new Promise(r=>setTimeout(r,250));continue;
     }
     const status=await entryMessage(registration.active,{type:'GET_UPDATE_STATUS'});
-    if(registration.active?.state==='activated'&&(kind==='bridge'?status?.entry==='root':status?.version==='V7.6'))return;
+    if(registration.active?.state==='activated'&&(kind==='bridge'?status?.entry==='root':status?.version==='V7.7'))return;
     await new Promise(r=>setTimeout(r,250));
   }
   throw Error('entry worker not ready');

@@ -41,21 +41,24 @@ function syncLearningClock(showPrompt=true){
   roundState.elapsed=Math.floor(roundState.elapsedMs/1000);
   renderCountdown();
   if(showPrompt&&active&&roundState.phase==='test'&&!testFinished&&clock.expired&&!timePrompt.open){
+    if(!clock.historyExpiredRecorded){recordLearning('time_expired',{remainingMs:0,page:currentPage+1,focus:document.activeElement?.getAttribute('aria-label')||document.activeElement?.id||null});clock.historyExpiredRecorded=true;}
     hideKeyboard();timePrompt.showModal();byId('extend-time').focus();
   }
 }
 byIdClock('extend-time').onclick=()=>{
   if(!roundState||roundState.phase!=='test'||!roundState.countdown?.expired)return;
   roundState.countdown={remainingMs:60000,expired:false};
+  recordLearning('time_extended',{seconds:60});
   learningClockLastAt=Date.now();closeTimePrompt();renderCountdown();saveSession();
 };
 byIdClock('submit-timed-test').onclick=()=>{
   if(!roundState||roundState.phase!=='test'||!roundState.countdown?.expired)return;
   closeTimePrompt();
+  recordLearning('timeout_submitted',{page:currentPage+1});
   // Already submitted pages keep their scores; the current page keeps its letters.
   if(!pageSubmitted)submitPage(true);
   for(let i=currentPage+1;i<pages.length;i++){
-    pages[i].forEach(word=>{recordTest(word,false);allWrongList.push(word);});
+    pages[i].forEach(word=>{recordTest(word,false,'','timeout_unshown');allWrongList.push(word);});
   }
   updateDashboard();showFinalResults();
 };
