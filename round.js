@@ -26,13 +26,12 @@ function renderIslands(words){
       const input=document.createElement('input');input.maxLength=1;input.autocomplete='off';input.spellcheck=false;
       input.setAttribute('autocapitalize','off');input.setAttribute('autocorrect','off');
       input.setAttribute('aria-label',`${w.c} 第${i+1}个字母`);
-      input.onclick=e=>handleCellClick(e,r,c,d);input.onfocus=()=>updateDirection(r,c,d);
-      input.onkeydown=e=>handleKey(e,r,c);input.oninput=e=>handleInput(e,r,c);
+      bindGridInput(input,r,c,d);
       cell.append(input);cells.append(cell);
     }
     island.append(cells);box.append(island);
   });
-  inputDirection='across';renderClues();
+  inputDirection='across';activeGridWord=null;renderClues();
 }
 function remainingWords(){return roundState.original.filter(w=>!roundState.passed.includes(wordKey(w)));}
 function targetCount(){return Math.ceil(roundState.original.length*.7);}
@@ -51,7 +50,7 @@ function saveSession(){
   const focus=document.activeElement?.closest('.cell');
   const snapshot={schema:1,generation:storageGeneration,round:roundState,poolWrong,poolCorrect,view:{
     sessionWords,pages,currentPage,allCorrectList,allWrongList,pageSubmitted,placedWords,
-    gridSize:lastGridSize,islandMode,values,inputDirection,
+    gridSize:lastGridSize,islandMode,values,inputDirection,activeWord:activeGridWord?{num:activeGridWord.num,dir:activeGridWord.dir}:null,
     focus:focus?`${focus.dataset.r},${focus.dataset.c}`:null,
     reviewQueue,nextRoundQueue,reviewRound,reviewBusy,reviewInput:byId('rv-input').value
   }};
@@ -247,7 +246,7 @@ function restoreSession(){
     if(v.islandMode)renderIslands(placedWords);
     else{const grid=Array.from({length:v.gridSize},()=>Array(v.gridSize).fill(null));placedWords.forEach(w=>placeWord(grid,w,w.row,w.col,w.dir,w.num));renderBoard(grid,v.gridSize);}
     document.querySelectorAll('#grid input').forEach(el=>{el.value=v.values[`${el.parentElement.dataset.r},${el.parentElement.dataset.c}`]||'';el.disabled=pageSubmitted;});
-    inputDirection=v.inputDirection;renderPageNav();
+    inputDirection=v.inputDirection;activeGridWord=placedWords.find(w=>w.num===v.activeWord?.num&&w.dir===v.activeWord?.dir)||null;renderPageNav();
     byId('btn-submit').textContent=pageSubmitted?(currentPage<pages.length-1?'下一页 →':'查看结果 →'):'提交';
     byId('btn-skip').style.display=!pageSubmitted&&currentPage<pages.length-1?'inline':'none';
   }else if(roundState.phase==='review'){

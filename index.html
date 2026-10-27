@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no,viewport-fit=cover">
-<title>WordPuzzle V7.7 · 每轮学习与操作记录</title>
+<title>WordPuzzle V7.7.1 · 连续输入修复</title>
 <!-- PWA -->
 <link rel="manifest" href="./manifest.webmanifest">
 <meta name="theme-color" content="#1a4a3a">
@@ -264,6 +264,12 @@ body{
 /* ---- Responsive ---- */
 @media(max-width:380px){.clue{font-size:.82rem}}
 @media(min-width:520px){}
+#time-prompt{position:fixed;top:max(10px,env(safe-area-inset-top));left:50%;transform:translateX(-50%);z-index:400;width:calc(100% - 24px);max-width:420px;padding:16px;border:2px solid var(--accent);border-radius:16px;background:var(--bg);box-shadow:0 8px 32px #0003}
+#time-prompt[hidden]{display:none}
+#time-prompt h2{font-size:1.2rem;margin:0}
+#time-prompt p{margin:8px 0 12px;font-size:.9rem}
+.time-prompt-actions{display:flex;gap:10px}
+.time-prompt-actions button{flex:1;min-height:44px;margin:0}
 </style>
 <link rel="stylesheet" href="./iteration.css">
 <link rel="stylesheet" href="./learning-history.css">
@@ -271,7 +277,7 @@ body{
 <body>
 
 <div class="header">
-  <div><div class="header-title">Word<span>Puzzle</span></div><button class="version-link" onclick="document.getElementById('version-history').showModal()">V7.7 · 2026-10-27 · 版本记录</button></div>
+  <div><div class="header-title">Word<span>Puzzle</span></div><button class="version-link" onclick="document.getElementById('version-history').showModal()">V7.7.1 · 2026-10-28 · 版本记录</button></div>
   <div class="header-right">
     <span class="progress-pill" id="progress-pill">0%</span>
     <button class="btn-icon" onclick="toggleSettings()" title="设置">&#9881;</button>
@@ -281,7 +287,7 @@ body{
 <div class="settings-panel" id="settings">
   <div class="settings-row" id="install-row" style="display:none"><span class="settings-label">安装到主屏</span><button class="btn-sm" onclick="installApp()">立即安装</button></div>
   <div class="settings-row"><span class="settings-label">应用更新</span><button class="btn-sm" id="check-update">检查更新</button><button class="btn-sm" id="apply-update" hidden>保存并刷新</button></div>
-  <p id="update-status" class="update-status">当前 V7.7</p>
+  <p id="update-status" class="update-status">当前 V7.7.1</p>
   <div class="settings-row"><span id="audio-cache-status" class="settings-label">离线读音准备中</span><button class="btn-sm" id="retry-audio-cache">重试缓存</button></div>
   <div class="settings-row"><span class="settings-label">接续旧版或其他浏览器进度</span><button class="btn-sm" id="open-transfer" onclick="openTransferDialog()">接续进度</button></div>
   <div class="settings-row"><span class="settings-label">每轮过程记录</span><button class="btn-sm" id="open-history">查看记录</button></div>
@@ -345,7 +351,7 @@ body{
  <div class="result-card"><div class="result-icon">🌙</div><h2>先休息一下</h2><p id="pause-summary"></p><p>下次回来，继续这一轮。</p><button class="btn-confirm" id="resume-btn" onclick="resumeRound()">继续上次练习</button><button class="btn-sm end-choice" id="pause-end-btn" onclick="endRound()">结束本轮</button><button class="btn-sm end-choice" onclick="openLearningHistory()">查看学习记录</button></div>
 </div>
 <div class="result-overlay" id="ended"><div class="result-card"><div class="result-icon">🌿</div><h2>这一轮收好了</h2><p id="end-summary"></p><button class="btn-confirm" id="start-next" onclick="startNewGame()">开始新一轮</button><button class="btn-sm end-choice" onclick="openLearningHistory()">查看学习记录</button></div></div>
-<dialog id="version-history"><h2>版本足迹</h2><p>当前 V7.7 · 2026-10-27 · 每轮过程记录</p><p>第 24 个版本登记条目（含 23 个历史标识）。登记数不等于完整发布次数。</p><ol id="version-items"></ol><form method="dialog"><button class="btn-confirm">关闭</button></form></dialog>
+<dialog id="version-history"><h2>版本足迹</h2><p>当前 V7.7.1 · 2026-10-28 · 连续输入修复</p><p>第 25 个版本登记条目（含 24 个历史标识）。登记数不等于完整发布次数。</p><ol id="version-items"></ol><form method="dialog"><button class="btn-confirm">关闭</button></form></dialog>
 
 <script>
 // ======================== FULL DB (V4.8 词库完整保留) ========================
@@ -374,7 +380,8 @@ const FULL_DB=[
 // ======================== STATE ========================
 let poolWrong=[],poolCorrect=[],sessionWords=[],placedWords=[];
 let reviewQueue=[],nextRoundQueue=[],reviewRound=1;
-let timerInterval=null,inputDirection='across';
+let timerInterval=null,inputDirection='across',activeGridWord=null;
+const beforeGridEdit=new WeakMap();
 let timerStartedAt=0;
 // 分页状态
 let pages=[],currentPage=0;
@@ -631,10 +638,7 @@ function renderBoard(grid,S){
         if(d.num)div.innerHTML=`<span class="cell-num" style="font-size:${numSize}px">${d.num}</span>`;
         let inp=document.createElement('input');inp.maxLength=1;inp.autocomplete='off';inp.setAttribute('autocapitalize','off');inp.setAttribute('autocorrect','off');inp.spellcheck=false;inp.setAttribute('aria-label',`第${r+1}行第${c+1}格`);
         inp.style.fontSize=fontSize+'px';
-        inp.onclick=e=>handleCellClick(e,r,c,d);
-        inp.onfocus=()=>updateDirection(r,c,d);
-        inp.onkeydown=e=>handleKey(e,r,c);
-        inp.oninput=e=>handleInput(e,r,c);
+        bindGridInput(inp,r,c,d);
         div.appendChild(inp);
       }else{
         div.style.width=cellSize+'px';div.style.height=cellSize+'px';
@@ -642,7 +646,7 @@ function renderBoard(grid,S){
       box.appendChild(div);
     }
   }
-  renderClues();inputDirection='across';
+  renderClues();inputDirection='across';activeGridWord=null;
 }
 function renderClues(){
   const el=document.getElementById('clues');el.innerHTML='';
@@ -655,21 +659,39 @@ function renderClues(){
 }
 function focusWord(num,dir){
   let pw=placedWords.find(w=>w.num===num&&w.dir===dir)||placedWords.find(w=>w.num===num);
-  if(!pw)return;inputDirection=pw.dir;
+  if(!pw||pageSubmitted)return;inputDirection=pw.dir;activeGridWord=pw;
   let div=document.querySelector(`div[data-r="${pw.row}"][data-c="${pw.col}"]`);
-  if(div){let inp=div.querySelector('input');if(inp)inp.focus();}
+  if(div){let inp=div.querySelector('input');if(inp){inp.focus();inp.select();}}
   highlightWord(pw.row,pw.col);
 }
 
 // ======================== INTERACTION ========================
+function bindGridInput(input,r,c,d){
+  input.onclick=e=>handleCellClick(e,r,c,d);
+  input.onfocus=()=>{updateDirection(r,c,d);input.select();};
+  input.onkeydown=e=>handleKey(e,r,c);
+  input.onbeforeinput=e=>{beforeGridEdit.set(input,input.value);if(roundState?.countdown?.expired)e.preventDefault();};
+  input.oninput=e=>handleInput(e,r,c);
+}
+function wordContainsCell(w,r,c){
+  return w&&(w.dir==='across'?r===w.row&&c>=w.col&&c<w.col+w.w.length:c===w.col&&r>=w.row&&r<w.row+w.w.length);
+}
 function updateDirection(r,c,d){
   if(d.inAcross&&!d.inDown)inputDirection='across';
   else if(!d.inAcross&&d.inDown)inputDirection='down';
   highlightWord(r,c);
 }
 function handleCellClick(e,r,c,d){
-  if(d.inAcross&&d.inDown&&e.detail===2)inputDirection=inputDirection==='across'?'down':'across';
-  updateDirection(r,c,d);
+  if(pageSubmitted)return;
+  const candidates=placedWords.filter(w=>wordContainsCell(w,r,c));
+  const switchingDirection=d.inAcross&&d.inDown&&e.detail===2;
+  const current=candidates.find(w=>w===activeGridWord);
+  const chosen=switchingDirection?candidates.find(w=>w.dir!==inputDirection):
+    current||candidates.find(w=>w.dir===inputDirection)||candidates[0];
+  if(!chosen)return;
+  if(chosen!==activeGridWord){focusWord(chosen.num,chosen.dir);}
+  else{inputDirection=chosen.dir;updateDirection(r,c,d);e.target.select();}
+  saveSession();
 }
 function highlightWord(r,c){
   document.querySelectorAll('.cell.hl').forEach(el=>el.classList.remove('hl'));
@@ -692,10 +714,12 @@ function highlightWord(r,c){
 }
 function handleKey(e,r,c){
   if(e.key==='Tab')return;
+  if(roundState?.countdown?.expired){e.preventDefault();return;}
   if(e.key.match(/^[a-zA-Z-]$/)){e.preventDefault();e.target.value=e.key;moveFocus(r,c,1);saveSession();return;}
   if(e.key==='Backspace'){e.preventDefault();if(e.target.value)e.target.value='';else moveFocus(r,c,-1);}
 }
 function handleInput(e,r,c){
+  if(roundState?.countdown?.expired){e.target.value=beforeGridEdit.get(e.target)??'';return;}
   if(/^[a-zA-Z-]$/.test(e.target.value)){moveFocus(r,c,1);}
 }
 function moveFocus(r,c,step){
