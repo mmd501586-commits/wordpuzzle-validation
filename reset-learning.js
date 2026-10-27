@@ -20,7 +20,7 @@ window.addEventListener('storage',event=>{
 
 const resetDialog=document.createElement('dialog');
 resetDialog.setAttribute('aria-labelledby','reset-title');
-resetDialog.innerHTML='<h2 id="reset-title">清空学习记录</h2><p>将清除待攻克、已掌握和本轮进度。词库保留，所有词恢复为新词。</p><p>此操作不可恢复。</p><p id="reset-error" role="alert"></p><button type="button" class="btn-confirm" id="confirm-reset">确认清空</button><p><button type="button" class="btn-sm" id="cancel-reset">取消</button></p>';
+resetDialog.innerHTML='<h2 id="reset-title">清空学习记录</h2><p>将清除待攻克、已掌握、本轮进度及全部轮次的过程记录。词库保留，所有词恢复为新词。</p><p>此操作不可恢复。</p><p id="reset-error" role="alert"></p><button type="button" class="btn-confirm" id="confirm-reset">确认清空</button><p><button type="button" class="btn-sm" id="cancel-reset">取消</button></p>';
 document.body.append(resetDialog);
 function openResetDialog(){
   if(resetDialog.open)return;
@@ -42,7 +42,7 @@ resetDialog.addEventListener('close',()=>{
 });
 resetDialog.addEventListener('cancel',event=>{if(resetIncomplete)event.preventDefault();});
 document.getElementById('cancel-reset').onclick=()=>{if(!resetIncomplete)resetDialog.close();};
-document.getElementById('confirm-reset').onclick=()=>{
+document.getElementById('confirm-reset').onclick=async()=>{
   const previousRound=roundState;
   const previousStorageFailed=storageFailed,previousSaveFailed=saveFailed;
   try{
@@ -53,6 +53,7 @@ document.getElementById('confirm-reset').onclick=()=>{
     resetIncomplete=true;
     storageGeneration=nextGeneration;
     roundState=null;clearTimeout(reviewTimer);reviewBusy=false;
+    await LearningHistory.clear();
     for(const key of ['wp_trial_v741:entry_backup','wp_trial_v741:entry_pending','wp_trial_v741:transfer_backup','wp_trial_v741:transfer_pending','wp_trial_v741:transfer_receipt','wp_trial_v741:wp_round_v71','wp_trial_v741:wp_wrong','wp_trial_v741:wp_correct','wp_trial_v741:pet_wrong_final','wp_trial_v741:pet_correct_final'])localStorage.removeItem(key);
     localStorage.setItem('wp_trial_v741:wp_version','mvp-v1');
     location.reload();

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no,viewport-fit=cover">
-<title>WordPuzzle V7.6 · 错词读音与拼读辅助</title>
+<title>WordPuzzle V7.7 · 每轮学习与操作记录</title>
 <!-- PWA -->
 <link rel="manifest" href="./manifest.webmanifest">
 <meta name="theme-color" content="#1a4a3a">
@@ -266,11 +266,12 @@ body{
 @media(min-width:520px){}
 </style>
 <link rel="stylesheet" href="./iteration.css">
+<link rel="stylesheet" href="./learning-history.css">
 </head>
 <body>
 
 <div class="header">
-  <div><div class="header-title">Word<span>Puzzle</span></div><button class="version-link" onclick="document.getElementById('version-history').showModal()">V7.6 · 2026-09-12 · 版本记录</button></div>
+  <div><div class="header-title">Word<span>Puzzle</span></div><button class="version-link" onclick="document.getElementById('version-history').showModal()">V7.7 · 2026-10-27 · 版本记录</button></div>
   <div class="header-right">
     <span class="progress-pill" id="progress-pill">0%</span>
     <button class="btn-icon" onclick="toggleSettings()" title="设置">&#9881;</button>
@@ -280,15 +281,18 @@ body{
 <div class="settings-panel" id="settings">
   <div class="settings-row" id="install-row" style="display:none"><span class="settings-label">安装到主屏</span><button class="btn-sm" onclick="installApp()">立即安装</button></div>
   <div class="settings-row"><span class="settings-label">应用更新</span><button class="btn-sm" id="check-update">检查更新</button><button class="btn-sm" id="apply-update" hidden>保存并刷新</button></div>
-  <p id="update-status" class="update-status">当前 V7.6</p>
+  <p id="update-status" class="update-status">当前 V7.7</p>
   <div class="settings-row"><span id="audio-cache-status" class="settings-label">离线读音准备中</span><button class="btn-sm" id="retry-audio-cache">重试缓存</button></div>
   <div class="settings-row"><span class="settings-label">接续旧版或其他浏览器进度</span><button class="btn-sm" id="open-transfer" onclick="openTransferDialog()">接续进度</button></div>
+  <div class="settings-row"><span class="settings-label">每轮过程记录</span><button class="btn-sm" id="open-history">查看记录</button></div>
+  <p id="history-status" role="status"></p>
   <div class="settings-row"><span class="settings-label">导出学习记录</span><button class="btn-sm" onclick="exportData()">下载 JSON</button></div>
   <div class="settings-row"><span class="settings-label">关于</span><a href="https://github.com/mmd501586-commits/wordpuzzle-validation" target="_blank" rel="noopener">项目页面 ↗</a></div>
   <div class="settings-row"><span class="settings-label">重置所有数据</span><button class="btn-sm danger" onclick="resetData()">清空重置</button></div>
 </div>
 
 <div class="round-status"><strong id="round-progress"></strong><span id="phase-label"></span><small id="save-status" role="status">自动保存已开启</small></div>
+<p id="history-alert" role="alert" hidden></p>
 <div class="dashboard">
   <div class="stat"><span class="stat-label">新词</span><span class="stat-val new" id="s-new">0</span></div>
   <div class="stat"><span class="stat-label">待攻克</span><span class="stat-val hard" id="s-hard">0</span></div>
@@ -321,6 +325,7 @@ body{
     <div class="result-wrong-list" id="r-list" style="display:none"></div>
     <button class="btn-confirm" id="r-btn" onclick="onResultNext()">继续</button>
     <button class="btn-sm end-choice" id="end-btn" onclick="endRound()" style="display:none">今天到这里</button>
+    <button class="btn-sm end-choice" onclick="openLearningHistory()">查看本轮记录</button>
   </div>
 </div>
 
@@ -337,10 +342,10 @@ body{
 
 <button class="pause-control" id="pause-btn" onclick="pauseRound()">暂停并保存</button>
 <div class="result-overlay" id="paused" role="dialog" aria-modal="true" aria-label="已暂停">
- <div class="result-card"><div class="result-icon">🌙</div><h2>先休息一下</h2><p id="pause-summary"></p><p>下次回来，继续这一轮。</p><button class="btn-confirm" id="resume-btn" onclick="resumeRound()">继续上次练习</button><button class="btn-sm end-choice" id="pause-end-btn" onclick="endRound()">结束本轮</button></div>
+ <div class="result-card"><div class="result-icon">🌙</div><h2>先休息一下</h2><p id="pause-summary"></p><p>下次回来，继续这一轮。</p><button class="btn-confirm" id="resume-btn" onclick="resumeRound()">继续上次练习</button><button class="btn-sm end-choice" id="pause-end-btn" onclick="endRound()">结束本轮</button><button class="btn-sm end-choice" onclick="openLearningHistory()">查看学习记录</button></div>
 </div>
-<div class="result-overlay" id="ended"><div class="result-card"><div class="result-icon">🌿</div><h2>这一轮收好了</h2><p id="end-summary"></p><button class="btn-confirm" id="start-next" onclick="startNewGame()">开始新一轮</button></div></div>
-<dialog id="version-history"><h2>版本足迹</h2><p>当前 V7.6 · 2026-09-12 · 本地候选版</p><p>第 22 个版本登记条目（含 21 个历史标识）。登记数不等于完整发布次数。</p><ol id="version-items"></ol><form method="dialog"><button class="btn-confirm">关闭</button></form></dialog>
+<div class="result-overlay" id="ended"><div class="result-card"><div class="result-icon">🌿</div><h2>这一轮收好了</h2><p id="end-summary"></p><button class="btn-confirm" id="start-next" onclick="startNewGame()">开始新一轮</button><button class="btn-sm end-choice" onclick="openLearningHistory()">查看学习记录</button></div></div>
+<dialog id="version-history"><h2>版本足迹</h2><p>当前 V7.7 · 2026-10-27 · 每轮过程记录</p><p>第 24 个版本登记条目（含 23 个历史标识）。登记数不等于完整发布次数。</p><ol id="version-items"></ol><form method="dialog"><button class="btn-confirm">关闭</button></form></dialog>
 
 <script>
 // ======================== FULL DB (V4.8 词库完整保留) ========================
@@ -469,8 +474,9 @@ function loadData(){
   poolWrong=deduplicate(poolWrong);poolCorrect=deduplicate(poolCorrect);
   saveData();
 }
-function exportData(){
-  downloadLearningJSON(buildLearningExport(),`wordpuzzle-${new Date().toISOString().slice(0,10)}.json`);
+async function exportData(){
+  saveSession();
+  downloadLearningJSON({...buildLearningExport(),history:await LearningHistory.exportAll()},`wordpuzzle-${new Date().toISOString().slice(0,10)}.json`);
 }
 function resetData(){openResetDialog();}
 function toggleSettings(){document.getElementById('settings').classList.toggle('open')}
@@ -494,18 +500,18 @@ function updateDashboard(){
 // 优先级：强制轮转(冷落>G局的难词) → 到期复习 → 其余难词(按分数) → 新词补足
 function selectWords(){
   const now=Date.now(),size=10,selected=[],used=new Set();
-  const add=(items,limit=size)=>{let n=0;for(const w of items){if(selected.length>=size||n>=limit)break;const key=w.w.toLowerCase();if(!used.has(key)){selected.push(w);used.add(key);n++;}}};
+  const add=(items,limit=size,reason="unspecified")=>{let n=0;for(const w of items){if(selected.length>=size||n>=limit)break;const key=w.w.toLowerCase();if(!used.has(key)){selected.push({...w,selectionReason:reason});used.add(key);n++;}}};
   const hard=poolWrong.filter(w=>w.weight>0).sort((a,b)=>(b.sessionsSinceSeen||0)-(a.sessionsSinceSeen||0)||(b.weight||0)-(a.weight||0));
   const due=poolCorrect.filter(w=>w.nextReview&&w.nextReview<=now).sort((a,b)=>a.nextReview-b.nextReview);
   const recentFailures=hard.filter(w=>w.lastFailedAt&&now-w.lastFailedAt<3*864e5).length;
   const dueQuota=Math.min(8,Math.max(2,Math.ceil(due.length/2)));
   // Unfinished words have first claim; overdue review gets a dynamic share.
-  add([...poolWrong,...poolCorrect].filter(w=>w.priorityNext));
-  add(hard.filter(w=>(w.sessionsSinceSeen||0)>=3),2);
-  add(due,Math.max(2,dueQuota-(recentFailures>=4?2:0)));
-  add(hard);
+  add([...poolWrong,...poolCorrect].filter(w=>w.priorityNext),size,"unfinished_priority");
+  add(hard.filter(w=>(w.sessionsSinceSeen||0)>=3),2,"neglected_hard");
+  add(due,Math.max(2,dueQuota-(recentFailures>=4?2:0)),"due_quota");
+  add(hard,size,"hard");
   const fresh=poolWrong.filter(w=>!w.weight).sort(()=>Math.random()-.5);
-  add(fresh);add(due);
+  add(fresh,size,"fresh");add(due,size,"due_fill");
   // Never force a not-yet-due word into a round merely to fill ten slots.
   return selected;
 }
@@ -711,6 +717,7 @@ function fmt(s){return`${Math.floor(s/60)}:${(s%60).toString().padStart(2,'0')}`
 <script src="./reset-learning.js"></script>
 <script src="./learning-transfer.js"></script>
 <script src="./entry-continuity.js"></script>
+<script src="./learning-history.js"></script>
 <script src="./round.js"></script>
 <script>
 fetch('./version.json').then(r=>r.json()).then(data=>{
