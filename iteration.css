@@ -9,7 +9,9 @@
 .result-card p{margin:14px 0;line-height:1.7;color:var(--muted)}
 .result-wrong-list{max-height:25vh;overflow:auto}
 .end-choice{margin:14px auto 0;width:100%;padding:14px;font-size:.95rem}
-.pause-control{position:fixed;bottom:calc(12px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);z-index:350;background:var(--surface);border:1px solid var(--border);border-radius:24px;padding:11px 22px;color:var(--primary);box-shadow:0 3px 14px #1a4a3a18;font-size:.85rem;cursor:pointer}
+.pause-tools{display:flex;justify-content:flex-end;align-items:center;width:100%;margin-bottom:10px;flex-shrink:0}
+.pause-control{background:var(--surface);border:1px solid var(--border);border-radius:24px;min-height:44px;padding:10px 16px;color:var(--primary);font-size:.85rem;cursor:pointer}
+.pause-control:focus-visible{outline:3px solid #1d5fba;outline-offset:2px}
 #paused{z-index:400}#ended{z-index:400}
 .grid-box.islands{display:flex;align-items:flex-start;justify-content:center;flex-wrap:wrap;gap:18px;padding:18px 12px;max-width:100%;width:100%;background:var(--surface-dim);box-shadow:none}
 .word-island{max-width:100%;overflow-x:auto;padding:5px;background:var(--primary);border-radius:8px;margin-top:var(--offset)}
@@ -18,6 +20,7 @@
 .island-cells input{font-size:17px}.island-cells .cell-num{font-size:8px}
 .clue:focus-within{outline:2px solid var(--accent)}
 .cell.hl{box-shadow:inset 0 -2px var(--accent)}
+.cell:focus-within{background:#dcecff!important;box-shadow:inset 0 0 0 3px #1d5fba}
 dialog{margin:auto;border:1px solid var(--border);border-radius:18px;padding:24px;max-width:440px;width:calc(100% - 32px);max-height:85dvh;overflow:auto;color:var(--text)}
 dialog::backdrop{background:#10251ccc}dialog p{margin:12px 0;font-size:.85rem;line-height:1.6}
 dialog ol{padding-left:24px;margin-bottom:18px}dialog li{padding:8px 0;font-size:.85rem;line-height:1.5}

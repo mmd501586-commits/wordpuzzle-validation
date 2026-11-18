@@ -38,6 +38,9 @@ function targetCount(){return Math.ceil(roundState.original.length*.7);}
 function canFinish(){return roundState.passed.length>=targetCount();}
 function updateRoundProgress(){
   if(!roundState)return;
+  const pauseHost=byId(roundState.phase==='review'?'review-pause-tools':roundState.phase==='result'?'result-pause-tools':'game-pause-tools');
+  const pauseButton=byId('pause-btn');
+  if(pauseButton.parentElement!==pauseHost)pauseHost.append(pauseButton);
   byId('round-progress').textContent=`已通过 ${roundState.passed.length}/${roundState.original.length} · 本轮目标 ${targetCount()} 个`;
   byId('phase-label').textContent=roundState.phase==='review'?'补漏洞 · 练习后再独立检验':roundState.phase==='test'?(roundState.testCount?'独立复测 · 只测本批待通过词':'初测 · 找到需要加强的词'):'本轮结算';
 }

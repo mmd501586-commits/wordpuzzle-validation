@@ -1,9 +1,9 @@
 {
-  "version": "V7.7.1",
-  "date": "2026-10-28",
-  "status": "input-continuity",
-  "registeredVersions": 25,
-  "cacheName": "wordpuzzle-main-v771-20261028",
+  "version": "V7.7.2",
+  "date": "2026-11-18",
+  "status": "input-visibility",
+  "registeredVersions": 26,
+  "cacheName": "wordpuzzle-main-v772-20261118",
   "history": [
     {
       "version": "V4.3",
@@ -129,6 +129,11 @@
       "version": "V7.7.1",
       "date": "2026-10-28",
       "summary": "交叉格连续输入、加时保留输入焦点、切换词从首格开始；沿用学习进度与过程记录"
+    },
+    {
+      "version": "V7.7.2",
+      "date": "2026-11-18",
+      "summary": "当前输入格明显高亮；保留逐格输入和手动点选；暂停并保存移入独立工具行，沿用学习进度与过程记录"
     }
   ]
 }
